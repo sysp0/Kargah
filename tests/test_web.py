@@ -8,7 +8,7 @@ import pytest
 
 from helpers import setup
 
-from devchain import cli, config, events, web
+from kargah import cli, config, events, web
 
 PASS = {"verdict": "VERDICT: PASS\nCOMMIT: Add package one"}
 WORK = {"write": {"src/a.py": "x = 1\n", "tests/test_a.py": "def test_a():\n    assert True\n"}}

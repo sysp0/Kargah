@@ -616,7 +616,7 @@ class Loop:
         if number:
             self.tracker.labels(number, remove=("in-progress",))
         if outcome == "question":
-            say(f"### Question from devchain on {row_id}\n\n{info.get('question', '')}\n\nAny comment here is the "
+            say(f"### Question from kargah on {row_id}\n\n{info.get('question', '')}\n\nAny comment here is the "
                 "answer; the task goes on with it. Tasks that depend on it wait meanwhile.", "question",
                 about=info.get("about") or [], **extra)
             self.tracker.labels(number, add=("question",)) if number else None

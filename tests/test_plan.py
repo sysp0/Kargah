@@ -1,6 +1,6 @@
 import pytest
 
-from devchain import config, plan
+from kargah import config, plan
 
 NEW = """# Part 02: segments
 

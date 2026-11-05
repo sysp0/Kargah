@@ -4,8 +4,8 @@ import pytest
 
 from helpers import setup
 
-from devchain import cli, events, plain
-from devchain.model import load
+from kargah import cli, events, plain
+from kargah.model import load
 
 PASS = {"verdict": "VERDICT: PASS\nCOMMIT: Add package one"}
 WORK = {"write": {"src/a.py": "x = 1\n", "tests/test_a.py": "def test_a():\n    assert True\n"}}
@@ -28,7 +28,7 @@ def test_plain_summary_and_usage_table(repo, capsys):
 def test_tui_renders_packages_usage_and_live_log(repo):
     textual = pytest.importorskip("textual")
     assert textual
-    from devchain.tui import WatchApp
+    from kargah.tui import WatchApp
 
     repo.codex(WORK)
     repo.claude(PASS)
@@ -54,7 +54,7 @@ def test_tui_renders_packages_usage_and_live_log(repo):
 
 def test_tui_package_table_has_fixed_height_and_keeps_its_scroll(tmp_path):
     pytest.importorskip("textual")
-    from devchain.tui import WatchApp
+    from kargah.tui import WatchApp
 
     run = events.create(tmp_path / "runs", "qa")
     names = [f"S{i}" for i in range(1, 31)]
@@ -85,7 +85,7 @@ def test_tui_package_table_has_fixed_height_and_keeps_its_scroll(tmp_path):
 
 def test_tui_resume_asks_first_then_launches_the_run(repo, monkeypatch):
     pytest.importorskip("textual")
-    from devchain.tui import WatchApp
+    from kargah.tui import WatchApp
 
     launched = []
     monkeypatch.setattr(cli, "launch", lambda root, run, argv, session: launched.append(argv) or "tmux x")
@@ -120,7 +120,7 @@ def test_tui_resume_asks_first_then_launches_the_run(repo, monkeypatch):
 
 def test_tui_stop_asks_first_then_stops_the_run(repo, monkeypatch):
     pytest.importorskip("textual")
-    from devchain.tui import WatchApp
+    from kargah.tui import WatchApp
 
     stopped = []
     monkeypatch.setattr(events.Run, "stop", lambda self: stopped.append(self.id))

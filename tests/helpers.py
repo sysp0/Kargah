@@ -3,8 +3,8 @@ import json
 
 from conftest import git
 
-from devchain import config, events
-from devchain.feature import Feature
+from kargah import config, events
+from kargah.feature import Feature
 
 PLAN = """# Part 01: demo
 

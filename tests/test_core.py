@@ -1,9 +1,9 @@
 from pathlib import Path
 import json
 
-from devchain import config, events
-from devchain.model import View
-from devchain.usage import Usage, from_claude_result, from_codex_event
+from kargah import config, events
+from kargah.model import View
+from kargah.usage import Usage, from_claude_result, from_codex_event
 
 
 def test_events_append_and_read_in_order(tmp_path):
@@ -77,8 +77,8 @@ def test_view_folds_events():
 
 
 def test_live_lines_drop_terminal_escapes(tmp_path):
-    from devchain import events as ev
-    from devchain.agents import Live
+    from kargah import events as ev
+    from kargah.agents import Live
 
     run = ev.create(tmp_path, "qa")
     Live(run, "S1", "playwright").line("\x1b[1A\x1b[2K[1/1] \x1b[32mpassed\x1b[0m\x07", force=True)
@@ -87,7 +87,7 @@ def test_live_lines_drop_terminal_escapes(tmp_path):
 
 
 def test_loop_settings_in_the_repo_config():
-    cfg = config.load(Path(__file__).resolve().parents[2])
+    cfg = config.load(Path(__file__).resolve().parents[1] / "devchain-v1")  # the snapshot config stands in for a project config
     assert cfg.get("loop.poll_seconds") == 300
     assert cfg.get("qa_worktree.env.QA_UI_PORT") == "5193"
     assert cfg.get("qa.fix_max_files") is None and cfg.get("feature.gate") is None

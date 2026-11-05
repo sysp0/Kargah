@@ -2,7 +2,7 @@
 from conftest import git
 from helpers import FIX, FOLDER, NOTE, PART, PASS, feature, setup, states, work
 
-from devchain import agents, events, gitops
+from kargah import agents, events, gitops
 
 WAIT = {"write": {NOTE: "1) row P1 unclear\n"}, "blocked": f"plan problem, see {NOTE}"}
 

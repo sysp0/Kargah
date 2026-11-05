@@ -1,4 +1,4 @@
-"""Settings from devchain.toml at the repo root. Every number and command lives there, not in code."""
+"""Settings from kargah.toml at the repo root. Every number and command lives there, not in code."""
 
 from __future__ import annotations
 

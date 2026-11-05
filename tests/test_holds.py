@@ -1,6 +1,6 @@
 """The hold rules of docs/devchain/README.md, case by case: who waits, why, and when they go on."""
 
-from devchain.holds import Ask, Bug, Task, Wait, compute, pick
+from kargah.holds import Ask, Bug, Task, Wait, compute, pick
 
 
 def chain(*specs):

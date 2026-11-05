@@ -1,10 +1,10 @@
 import json
 import subprocess
 
-from devchain import cli
-from devchain import events as ev
-from devchain.config import load
-from devchain.qa import QA
+from kargah import cli
+from kargah import events as ev
+from kargah.config import load
+from kargah.qa import QA
 
 SPEC = "qa/tests/suite/s1.spec.ts"
 SPEC2 = "qa/tests/suite/s2.spec.ts"
@@ -128,9 +128,9 @@ def test_a_run_started_by_an_agent_is_refused(repo, monkeypatch):
 
 
 def test_qaloop_tests_a_finished_part_once_and_commits_green_specs(repo):
-    from devchain import config, plan as plan_mod
-    from devchain.journal import Journal
-    from devchain.qaloop import QaLoop
+    from kargah import config, plan as plan_mod
+    from kargah.journal import Journal
+    from kargah.qaloop import QaLoop
 
     folder = repo.root / "docs/devchain-plan/x"
     folder.mkdir(parents=True)

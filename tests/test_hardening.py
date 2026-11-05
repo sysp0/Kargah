@@ -4,7 +4,7 @@ import pytest
 from conftest import git
 from helpers import FIX, PASS, feature, setup, work
 
-from devchain import agents, config, events, stats, wip
+from kargah import agents, config, events, stats, wip
 
 
 def test_a_step_that_goes_silent_is_killed_at_its_timeout(repo, tmp_path):

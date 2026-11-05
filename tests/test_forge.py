@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from devchain import config, forge
+from kargah import config, forge
 
 
 def issue(number, title="t", labels=(), comments=(), state="OPEN", body=""):

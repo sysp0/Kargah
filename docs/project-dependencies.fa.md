@@ -31,8 +31,8 @@
 | 9 | Playwright در docker | prompt implementer | tool + hook | `tools` + hook QA |
 | 10 | design system UI | `ui.design_system = docs/ui/design-system.md` | rule/path | مسیر در config |
 | 11 | skill شخص‌ثالث UI | `ui.skill` | skill | اختیاری، پروژه می‌آورد |
-| 12 | ClickHouse: کاربر و grant برای CI | `ci_test_init.py` (حذف شد) | hook | بخش CI پروژه، نه Kargah |
-| 13 | deploy و CI | `ci-deploy.sh` و ... (حذف شد) | hook | `hooks.deploy` (اختیاری، نقطه‌ی اتصال SDLC) |
+| 12 | ~~ClickHouse: کاربر و grant برای CI~~ | `ci_test_init.py` (حذف شد) | — | **خارج از محدوده‌ی Kargah** (تصمیم مالک) |
+| 13 | ~~deploy و CI~~ | `ci-deploy.sh` و ... (حذف شد) | — | **خارج از محدوده‌ی Kargah** (تصمیم مالک) |
 | 14 | مسیرهای ثابت در کد: `docs/progress.md` (۵ جا)، `docs/qa` | `feature.py`, `trybox.py` | path | `[paths]` در config |
 
 ## فضای «با چشم باز»
@@ -45,5 +45,22 @@
 راهنمای agent: [INSTALL.md](../INSTALL.md).
 
 ## کارهای باز
-- تعریف دقیق فرمت `.kargah/invariants/` (فعلاً: هر فایل اجرایی با exit code؛ باید فکر شود).
-- ردیف ۱۲ و ۱۳ ممکن است خارج از محدوده‌ی Kargah باشند؛ تصمیم با مالک.
+- فرمت invariant: پیش‌نویس در [invariants.fa.md](invariants.fa.md)، منتظر تأیید.
+- ردیف ۱۲ و ۱۳ تصمیم‌گرفته شد: خارج از محدوده.
+
+## ردیف‌های پیداشده از خواندن پروژه‌ی واقعی (۲۰۲۶-۱۱-۰۵، ناشناس)
+
+اجرای دستی مراحل ۱ و ۲ از `INSTALL.md` روی پروژه‌ی واقعی مالک. فهرست کامل (با نام‌های واقعی، بیرون ریپو) نزد مالک است؛ اینجا فقط **الگوهای** عمومی‌اش.
+
+| # | وابستگی | نوع | یادداشت |
+| --- | --- | --- | --- |
+| 15 | قاعده‌ی «نام‌های دامنه در لایه‌ی engine ممنوع» با لینت سفارشی، hook گیت pre-commit و escape `# repo-rules: allow <reason>` که reviewer باید گزارش کند | invariant + rule | ایده‌ی `ALLOWED:` در invariantها |
+| 16 | قاعده‌ی «عدد و آستانه در دیتابیس باشد، نه در کد» و «فقط انگلیسی» | rule (قضاوت reviewer) | برای اسکریپت نیست؛ در `AGENTS.md` |
+| 17 | `check.sh` در docker، با کنترل بار (`N=2` worker، `nice`) | hook + env | منابع سرور محدود است؛ نیاز به `load` در config |
+| 18 | اثبات «تست‌های جدید از تغییر محافظت می‌کنند»: فایل‌های منبع به commit پایه برگردانده می‌شود و تست باید **شکست بخورد** | task step | از `/build`؛ مثل «test fails before the fix» در Gumloop. **باید در Kargah حفظ شود** |
+| 19 | چند سرویس stack (دو دیتابیس، api، ui) با compose جدا برای dev، QA، try | hook + env | پورت‌ها نباید با dev مالک تداخل کنند |
+| 20 | secretها: ۶+ متغیر رمز در `.env`؛ فقط نام ثبت می‌شود | env | هرگز مقدار؛ بررسی «grep نام در فایل‌های نوشته‌شده» |
+| 21 | دانش لاگ production (Grafana) در `AGENTS.md` | rule + tool (MCP) | اتصال به observability (slot) |
+| 22 | graphify (knowledge graph) و hookهای session-start | tool + skill | اختیاری |
+| 23 | spec (`spec/`) برنده است؛ «کد در برابر spec = بپرس» | rule | منبع حقیقت پروژه؛ نقطه‌ی `spec_path` در config |
+| 24 | محدودیت: «بدون GitHub issue؛ سؤال و باگ از chat» | سیاست | **با مدل tracker-محور v1 در تضاد است؛ بخش بعد** |

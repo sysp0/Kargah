@@ -74,3 +74,18 @@ ticket با label `ready`  --(trigger: tracker)-->  implement  --(PR)-->  review
 - ساخت bot روی GitLab: project access token روی پلن شما در دسترس است؟ (باید بررسی شود.)
 - «سؤال از مالک» با mention یا فقط label؟
 - یک ticket = یک task یا یک plan = چند ticket (گراف وابستگی مت)؟
+
+## ۹. محدودیت مصرف یا crash = commit پیش‌نویس (WIP-commit)
+
+ایده‌ی مالک: وقتی Codex/Claude به سقف می‌خورد یا گیر می‌کند، **کار نیمه‌تمام را commit کن**، با علامت «ناقص»، و جایش را روی issue بنویس. بنابراین موتور هیچ state محلی لازم ندارد.
+
+- commit روی branch خود ticket (`kargah/<issue>`)، با پیشوند `WIP:` در عنوان و trailerها: `Kargah-Task: implement`, `Kargah-Issue: #12`, `Kargah-State: incomplete`.
+- GitLab: MR با پیشوند `Draft:`؛ GitHub: draft PR.
+- یک comment بات: «تا اینجا انجام شد: …؛ مانده: …؛ ادامه از commit `abc123`؛ منتظر: محدودیت Codex تا ساعت Y».
+- run بعدی همان branch را checkout می‌کند و از آخرین commit `incomplete` ادامه می‌دهد؛ commit را دوباره می‌سازد با trailer `Kargah-State: complete` (یا یک commit جدید روی آن).
+- Codex: `codex exec resume` به sessionی که روی **دیسک همین ماشین** است (`~/.codex/sessions`) وابسته است. پس session بهینه‌سازی است؛ منبع حقیقت = commit + comment. اگر session نبود، run جدید با brief کار می‌کند.
+- ریسک: commit ناقص نباید به `main` برسد. ترمز: MR draft؛ و check قبل از merge باید `Kargah-State: incomplete` را رد کند (invariant داخلی).
+
+## ۱۰. نتایج بررسی GitLab (۲۰۲۶-۱۱-۰۵)
+- حساب شخصی `sysp0` پلن **free** است و `POST /projects/:id/access_tokens` روی آن **کار کرد** (توکن آزمایشی ساخته و فوراً revoke شد؛ کاربر bot ساخته می‌شود). پس bot جدا بدون هزینه ممکن است. برای گروه `idelop-community` پلن از API برنگشت؛ هنوز نیازمند بررسی.
+- پروژه‌ی تستی: https://gitlab.com/sysp0/kargah-sandbox (private).

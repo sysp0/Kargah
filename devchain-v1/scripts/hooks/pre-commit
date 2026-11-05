@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Block staged API and engine Python that breaks repo rules. At most 5 lines on failure.
+set -euo pipefail
+root=$(git rev-parse --show-toplevel)
+# Fast path: no staged API or engine Python. No legacy hook is chained:
+# .git/hooks has only *.sample files, and the repo has no husky or pre-commit framework.
+mapfile -t files < <(git diff --cached --name-only --diff-filter=ACMR | grep -E '^(project-a/)?(demo_api/.+|app/(api|engine)/.+|app/migrate)\.py$' | grep -Ev '(^|/)tests/' || true)
+[[ ${#files[@]} -eq 0 ]] && exit 0
+set +e
+out=$(python3 "$root/scripts/check_repo_rules.py" --root "$root" "${files[@]}" 2>&1)
+rc=$?
+set -e
+[[ $rc -eq 0 ]] && exit 0
+printf '%s\n' "$out" | head -n 5 >&2
+exit 1

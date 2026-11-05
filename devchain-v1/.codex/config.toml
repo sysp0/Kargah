@@ -1,0 +1,15 @@
+[mcp_servers.next_devtools]
+command = "npx"
+args = [
+    "-y",
+    "next-devtools-mcp@latest",
+]
+startup_timeout_sec = 60
+default_tools_approval_mode = "approve"
+
+[mcp_servers.next-devtools]
+command = "npx"
+args = [
+    "-y",
+    "next-devtools-mcp@latest",
+]

@@ -1,0 +1,165 @@
+# Settings of the development chain (./dev). Guide: docs/devchain/README.md; plans: docs/devchain-plan/README.md
+
+[paths]
+runs = ".devchain/runs"          # run folders: events.jsonl, prompts, logs, verdicts (git-ignored)
+progress = "docs/progress.md"    # Blocked: line stops a run
+
+[feature]
+plans_dir = "docs/devchain-plan"   # ./dev run <plan> reads the folder docs/devchain-plan/<plan>/
+
+[forge]
+# The tracker is the database of the loop: one issue per task, comments are the conversation. gh or glab.
+cli = "gh"                       # "gh" (GitHub) or "glab" (GitLab, glab api)
+repo = "OWNER/project-a"
+
+[issues]
+# Issues with these labels go to triage (Opus) and become fix rows I<n> in <plan folder>/issues.md, plan changes, or
+# a question to the owner. Template .github/ISSUE_TEMPLATE/feedback.yml.
+authors = []                     # logins whose comments count as the owner's; empty: everyone who can comment
+triage_flags = "--disallowedTools Bash"   # the triage reads the issue and the code, and writes only the plan folder
+
+[try]
+# ./dev try <part>: a detached worktree at the part's last commit, with its own stack: the ports below and its own
+# PostgreSQL and ClickHouse (project-a/docker-compose.try.yml), started empty and loaded with the QA seed data on
+# every ./dev try. The stack script of the main tree ($DEVCHAIN_ROOT) runs on the checkout, because an older part's
+# own script does not know these settings.
+dir = "../project-a-try"
+links = ["project-a/.env", "project-ui/ui/node_modules"]   # from the main tree (dirs as hard links)
+up = 'S="$DEVCHAIN_ROOT/project-a/scripts/qa-stack.sh"; export QA_ROOT="$PWD/project-a" COMPOSE="docker compose -f $DEVCHAIN_ROOT/project-a/docker-compose.try.yml"; bash "$S" down && bash "$S" up'
+down = 'export QA_ROOT="$PWD/project-a" COMPOSE="docker compose -f $DEVCHAIN_ROOT/project-a/docker-compose.try.yml"; bash "$DEVCHAIN_ROOT/project-a/scripts/qa-stack.sh" down && $COMPOSE stop'
+
+[try.env]
+QA_API_PORT = "8050"
+QA_INGEST_PORT = "8051"
+QA_UI_PORT = "5183"
+QA_PG_PORT = "5462"     # docker-compose.try.yml
+QA_CH_PORT = "8143"
+QA_DB = "project_a_qa"   # the name the QA seed accepts; it lives on the try databases
+QA_FRESH = "1"          # drop and migrate the try database on every ./dev try (an older part has an older schema)
+
+[models]
+review = "claude-sonnet-5-5"     # reviews each Codex round
+triage = "claude-opus-5-5"       # issue triage and plan rewrite
+
+[planfix]
+# A plan problem goes to this model first. It fixes the plan row when spec/, the plan or the code already answer it
+# (commit "plan: <Pn> row fixed by the plan check" on the plan branch), or gives Codex the answer, and Codex goes on.
+# When it would have to guess it writes "## Questions for the owner" into the note and the run stops.
+# Empty model: a plan problem always stops the run.
+model = "claude-opus-5-5"
+flags = "--effort medium --allowedTools Read,Grep,Glob,Write,Edit,Bash"
+max_per_run = 80                 # Opus calls per run (preflight fix included, resumes included); a cost guard
+max_per_package = 5              # Opus calls for one package; a cost guard against a package that loops
+
+[preflight]
+enabled = true                   # before the first package: Codex checks every row against the code once,
+                                 # the plan check fixes what it finds; docs/devchain-plan/<plan>/preflight.md
+
+[loop]
+poll_seconds = 300             # the loop looks at the tracker this often when nothing is ready
+max_waits = 3                   # the same WAITS FOR that holds nothing this many times: the task is stuck, the owner is asked
+max_errors = 3                   # devchain errors in a row before the loop stops and asks for help
+limit_comment_seconds = 600      # a usage-limit wait longer than this gets a progress comment on the task issue
+max_fix_rounds = 5               # Codex rounds after the first; each round gets every failure of the last check
+test_cmd = "make -k -C project-a test-fast demo-test"
+
+[git]
+base = "main"
+plan_branch_prefix = "plan/"     # --branch plan (default): every package of a plan on plan/<plan>
+branch_prefix = "codex/"         # --branch auto: codex/<pn> from origin/main
+push = true
+github_repo = "OWNER/project-a"   # for the PR link
+
+[codex]
+bin = "codex"
+# next-devtools-mcp: Codex reads the errors of a running Next dev server (QA stack :5173, try :5183)
+flags = "--sandbox workspace-write --json -c mcp_servers.next_devtools.command=\"npx\" -c mcp_servers.next_devtools.args=[\"-y\",\"next-devtools-mcp@latest\"] -c mcp_servers.next_devtools.startup_timeout_sec=60 -c mcp_servers.next_devtools.default_tools_approval_mode=\"approve\""
+max_tries = 24
+resume_flags = '--json -c sandbox_mode="workspace-write"'   # codex exec resume <flags> <session>: a task goes on after a limit
+# The limit_* settings also apply to Claude (review, plan check, triage): "session limit · resets 4am (Europe/Berlin)".
+limit_wait_seconds = 1800        # when the limit message names no time
+limit_max_wait_seconds = 21600
+limit_margin_seconds = 60
+busy_wait_seconds = 120         # "model at capacity" or "overloaded": wait this times the try number, then resend
+
+[claude]
+bin = "claude"
+# .mcp.json: next-devtools-mcp, so a review or triage reads the errors of a running Next dev server
+flags = "--allowedTools Read,Grep,Glob,Write,Bash,mcp__next-devtools__nextjs_index,mcp__next-devtools__nextjs_call --permission-mode acceptEdits --mcp-config .mcp.json"
+max_budget_usd = 2               # per review or triage call
+
+[web]
+# ./dev web: read-only web viewer of the runs. From another machine: ssh -L 8765:127.0.0.1:8765 <server>
+host = "127.0.0.1"               # 0.0.0.0 opens it to the network: anyone there can read the logs and prompts
+port = 8765
+poll_ms = 2000                   # how often the page asks for new events
+file_tail_bytes = 300000         # a larger run file (a Codex log) shows only its end
+
+[ui]
+dir = "project-ui/ui"
+build = "cd project-ui/ui && NEXT_DIST_DIR=.next-build npm run build"
+smoke = ["qa/tests/smoke/pages.spec.ts"]   # after a UI change: every main page opens without a browser error
+# UI rows (title `UI: ...`): the designer writes ui-<Pn>.md, Codex builds it, the UI review reads the screenshots.
+model = "claude-sonnet-5-5"                 # the UI designer and the UI review
+design_system = "docs/ui/design-system.md"  # the look; the skill never overrides it
+skill = ".claude/skills/ui-ux-pro-max"      # UX rules (MIT, nextlevelbuilder/ui-ux-pro-max-skill)
+
+[accept]
+env_file = "project-a/.env"
+setup = "make -C project-a test-db"
+no_test_ok = '^(project-ui/|docs/|qa/)|\.(md|html)$'
+
+[accept.env]
+PG_HOST = "127.0.0.1"
+PG_PORT = "5452"
+CH_HOST = "127.0.0.1"
+CH_PORT = "8133"
+ME_USER = "project_a"
+ME_PASSWORD = "${METRIC_ENGINE_PASSWORD}"
+ME_DB = "project_a"
+ME_TEST_DB = "project_a_test_gw0"   # a single-file run truncates its test DB; real dev data lives in project_a_test
+
+[[accept.checks]]
+match = '^devchain/tests/.*\.py$'
+run = "uv run --quiet --project devchain pytest -q {path}"
+
+[[accept.checks]]
+match = 'tests/test_[^/]*\.py$'
+run = "scripts/check.sh {abs}"
+setup = true
+
+[qa]
+dir = "qa"
+scenarios_dir = "docs/qa"        # ./dev qa <suite> reads docs/qa/<suite>.md
+seeds = ["shop", "gsc"]          # QA data sets (QA_SEED of qa-stack.sh); the first is the default. ./dev try --seed
+codex_may_change = '^qa/'
+up = "make -s -C project-a qa-up"
+restart = "make -s -C project-a qa-down && make -s -C project-a qa-up"   # first start and after fixes
+reset = "make -s -C project-a qa-reset"
+run = "cd qa && npx playwright test {spec} --reporter=line"
+results_dir = "test-results"
+timeout_seconds = 900
+
+[qa.env]
+# Keep the build's browser checks separate from the developer's UI on :5173.
+QA_UI_PORT = "5203"
+NEXT_DIST_DIR = ".next-qa"
+
+[qa_worktree]
+# QA of a finished part runs in its own worktree, stack, ports and databases while the loop goes on building.
+enabled = true
+max_retests = 2                  # QA fails the same issue again after this many fix attempts: help label, no new triage
+dir = "../project-a-qa"
+links = ["project-a/.env", "project-ui/ui/node_modules", "qa/node_modules"]
+up = 'S="$DEVCHAIN_ROOT/project-a/scripts/qa-stack.sh"; export QA_ROOT="$PWD/project-a" COMPOSE="docker compose -f $DEVCHAIN_ROOT/project-a/docker-compose.qa-loop.yml"; bash "$S" down && bash "$S" up'
+restart = 'S="$DEVCHAIN_ROOT/project-a/scripts/qa-stack.sh"; export QA_ROOT="$PWD/project-a" COMPOSE="docker compose -f $DEVCHAIN_ROOT/project-a/docker-compose.qa-loop.yml"; bash "$S" down && bash "$S" up'
+reset = 'QA_ROOT="$PWD/project-a" COMPOSE="docker compose -f $DEVCHAIN_ROOT/project-a/docker-compose.qa-loop.yml" bash "$DEVCHAIN_ROOT/project-a/scripts/qa-stack.sh" reset'
+
+[qa_worktree.env]
+QA_API_PORT = "8060"
+QA_INGEST_PORT = "8061"
+QA_UI_PORT = "5193"
+QA_PG_PORT = "5472"     # docker-compose.qa-loop.yml
+QA_CH_PORT = "8153"
+QA_DB = "project_a_qa"
+QA_FRESH = "1"

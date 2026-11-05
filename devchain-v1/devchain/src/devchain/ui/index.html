@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>devchain</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top">
+  <span class="brand">devchain</span>
+  <select id="run" aria-label="Run"></select>
+  <span id="status" class="pill"></span>
+  <span id="stage" class="muted"></span>
+  <span class="grow"></span>
+  <span class="progress" title="packages done"><span id="bar"></span></span>
+  <span id="count" class="muted"></span>
+  <span id="elapsed" class="mono" title="elapsed"></span>
+  <span id="cost" class="cost" title="Claude cost of this run"></span>
+</header>
+<div id="banner" class="banner" hidden></div>
+<main class="grid">
+  <section class="panel packages">
+    <h2>Packages <span id="current" class="muted"></span></h2>
+    <div class="scroll">
+      <table id="pkgs">
+        <thead>
+          <tr><th>Pkg</th><th>State</th><th class="num">Round</th><th class="num">Time</th><th>Last step</th>
+            <th class="num">Claude</th><th>Detail</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="empty" class="empty" hidden>No runs yet. Start one with <code>./dev feature &lt;plan&gt; --detach</code>.</p>
+    </div>
+  </section>
+  <aside class="panel side">
+    <div id="detail" class="detail">
+      <p class="muted">Select a package to see its message, findings, plan note and files.</p>
+    </div>
+    <div id="usage" class="usage"></div>
+  </aside>
+  <section class="panel live">
+    <h2>Live
+      <span class="tools">
+        <label><input type="checkbox" id="only"> only <span id="only-name">the selected package</span></label>
+        <label><input type="checkbox" id="follow" checked> follow</label>
+        <button id="copy" class="copy" type="button" title="Copy the shown lines as JSON">Copy JSON</button>
+      </span>
+    </h2>
+    <div id="log" class="log mono" tabindex="0"></div>
+  </section>
+</main>
+<dialog id="viewer">
+  <div class="viewer-head">
+    <span id="viewer-title" class="mono"></span>
+    <button id="viewer-close" type="button">Close</button>
+  </div>
+  <pre id="viewer-body"></pre>
+</dialog>
+<script src="/app.js"></script>
+</body>
+</html>

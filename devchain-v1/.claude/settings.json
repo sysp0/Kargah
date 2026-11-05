@@ -1,0 +1,71 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(scripts/check.sh*)",
+      "Bash(uv run pytest*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "mcp__next-devtools__nextjs_index",
+      "mcp__next-devtools__nextjs_call",
+      "mcp__next-devtools__nextjs_docs",
+      "Bash(scripts/codex-pkg.sh*)",
+      "Bash(scripts/pkg-prompt.sh*)",
+      "Bash(ls:*)",
+      "Bash(graphify:*)",
+      "Bash(python3:*)",
+      "Bash($(cat graphify-out/.graphify_python) *)",
+      "Bash(uv run:*)",
+      "Bash(scripts/check.sh:*)",
+      "Bash(scripts/codex-pkg.sh:*)"
+    ],
+    "deny": [
+      "Read(./graphify-out/**)",
+      "Read(./uv.lock)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "next-devtools"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact|fork",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start-context.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard search"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard read"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/statusline.sh\""
+  },
+  "enabledPlugins": {
+    "codex@openai-codex": true
+  }
+}

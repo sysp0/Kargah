@@ -89,3 +89,43 @@ ticket با label `ready`  --(trigger: tracker)-->  implement  --(PR)-->  review
 ## ۱۰. نتایج بررسی GitLab (۲۰۲۶-۱۱-۰۵)
 - حساب شخصی `sysp0` پلن **free** است و `POST /projects/:id/access_tokens` روی آن **کار کرد** (توکن آزمایشی ساخته و فوراً revoke شد؛ کاربر bot ساخته می‌شود). پس bot جدا بدون هزینه ممکن است. برای گروه `idelop-community` پلن از API برنگشت؛ هنوز نیازمند بررسی.
 - پروژه‌ی تستی: https://gitlab.com/sysp0/kargah-sandbox (private).
+
+## ۱۱. هزینه‌ی ادامه‌ی کار بعد از وقفه (جست‌وجو، ۲۰۲۶-۱۱-۰۵؛ منابع دست‌دوم، تأییدنشده)
+
+مسئله: Codex دو ساعت کار کرده و سقف خورده؛ اگر session را ادامه دهیم، context بزرگ (مثلاً ۲۰۰ هزار توکن) دوباره بارگذاری می‌شود و اگر cache منقضی شده باشد هزینه و مصرف زیاد می‌شود.
+
+آنچه پیدا کردم (منابع: [Prompt caching in Codex CLI](https://codex.danielvaughan.com/2026/04/21/codex-cli-prompt-caching-maximise-cache-hits-cost-reduction/)، [Don't break the cache](https://codex.danielvaughan.com/2026/06/19/dont-break-the-cache-prompt-caching-research-codex-cli-cost-latency-optimisation-agent-loop/)، [Token reduction is not cost reduction](https://codex.danielvaughan.com/2026/07/28/token-reduction-is-not-cost-reduction-prompt-cache-economics-codex-cli-tool-output-compaction-billing/)، [issue درباره‌ی هزینه‌ی بعد از compaction](https://github.com/openai/codex/issues/21269)):
+- ادامه‌ی session با `resume` معمولاً **prefix کش‌شده** را نگه می‌دارد، ولی فقط تا وقتی cache زنده است (دقایق تا ساعت‌ها؛ **بعد از وقفه‌ی سقف، معمولاً مرده است**).
+- **compaction** (فشرده‌سازی خودکار) cache را می‌شکند؛ یک گزارش می‌گوید اولین درخواست بعد از compaction با ۳۳ هزار توکن شروع شد و فقط ۳٫۴ هزار cache شده بود.
+- پیشنهادهای منابع: آستانه‌ی compaction را دیرتر بگذار (حدود ۸۵٪ پنجره)، AGENTS.md را وسط session عوض نکن، برای pipelineها `prompt_cache_key` مشترک.
+- تأیید رسمی دربارهی `codex exec resume` و cache پیدا نکردم؛ باید با لاگ واقعی خودمان اندازه بگیریم.
+
+**نتیجه برای طراحی (بدون وابستگی به cache):**
+1. **کار کوچک و commit زیاد:** هر task ≤۵ فایل (قاعده‌ی v0.1) و WIP-commit هر وقت تست تازه‌ای سبز شد، نه فقط وقت سقف. پس «دو ساعت کار بی‌نتیجه» نداریم.
+2. **ادامه = brief تازه، نه session قدیمی:** run بعدی با یک خلاصه‌ی کوتاه (از comment و diff آخرین commit) شروع می‌کند؛ context گران قدیمی را بار نمی‌کند. `resume` فقط وقتی استفاده می‌شود که وقفه کوتاه است (زیر مدت cache).
+3. **هر run یک سقف زمان و توکن** دارد؛ اگر از آن گذشت، commit پیش‌نویس و توقف، نه اجرای بی‌پایان.
+4. هزینه‌ی هر run (توکن ورودی/کش‌شده/خروجی) در `log.jsonl` ثبت می‌شود تا از داده تصمیم بگیریم (v1 `usage.py` را دارد).
+
+## ۱۲. یافته‌های GitLab (آزمایش واقعی، ۲۰۲۶-۱۱-۰۵)
+| آزمایش | نتیجه |
+| --- | --- |
+| project access token (bot خودکار) روی **حساب شخصی** free | کار کرد |
+| همان روی پروژه‌ی داخل گروه `idelop-community/plugin` (من Owner گروه هستم) | **رد شد:** «User does not have permission to create project access token». پس برای گروه شما bot خودکار ممکن نیست (احتمالاً محدودیت پلن). |
+| لینک `blocks` بین issueها | **رد شد:** «not available for current license» (پولی) |
+| لینک `relates_to` | کار کرد |
+| نوع کار «Task» (زیرمجموعه‌ی issue) | در GraphQL پروژه‌ی تستی هست؛ سلسله‌مراتب parent/child را هنوز نیازموده‌ام |
+
+**پیامدها:**
+- bot برای گروه: یا یک **حساب کاربری عادی** `kargah-bot` را عضو پروژه می‌کنیم (با personal access token؛ ممکن است یک صندلی بگیرد)، یا پروژه را به فضای شخصی ببریم، یا پلن را ارتقا دهیم. تصمیم مالک.
+- وابستگی بین taskها را **خودِ موتور** اعمال می‌کند (فیلد `Depends: #n` در بدنه‌ی issue، مثل `holds.py`)، نه لینک `blocks` GitLab.
+
+## ۱۳. از plan تا issue (پیشنهاد؛ شروع نشده)
+جریان واقعی مالک: با Claude Opus در پروژه نیازمندی را بحث می‌کند و plan با حدود ۱۰ task درمی‌آید.
+
+**پیشنهاد:** plan یک فایل در ریپو است (`docs/plans/<تاریخ>-<نام>/plan.md`؛ هر task یک ردیف: id، عنوان، `Depends`، تست پذیرش، ≤۵ فایل، لایه) و **منبع حقیقت** همان فایل است.
+- **یک task:** یک issue.
+- **بیش از یک task:** یک issue **والد** (خلاصه‌ی plan + checklist پیشرفت) و **یک issue فرزند برای هر task** که با `relates_to` به والد و هم وصل‌اند و `Depends` در بدنه دارند.
+- دستور `publish` (در plugin) از روی فایل، issueها را **idempotent** می‌سازد: نشانه‌ی پنهان `plan-id/task-id` در بدنه؛ دوباره اجرا = تکرار نمی‌سازد.
+- مالک issueهای فرزند را می‌بیند و label `ready` را می‌زند (یکی‌یکی، یا روی والد برای همه).
+- چرا یک issue برای هر task: هر task یک branch، یک MR، یک گفت‌وگو و یک وضعیت label دارد. یک issue بزرگ برای ۱۰ task باعث می‌شود جواب‌ها و وضعیت‌ها قاطی شوند.
+- ریسک: ۱۰ issue شلوغ می‌شود؛ والد با checklist این را جبران می‌کند.

@@ -1,5 +1,7 @@
 # Engineering standards (Python)
 
+**These rules apply only to this repository's own source** (`src/kargah`). Kargah never imposes them on the projects it works on; project rules come from each project's own `AGENTS.md` and invariants.
+
 Kargah is a public tool other people will run on their repositories. Treat it as a product, not a script.
 
 ## Layout (ports and adapters)

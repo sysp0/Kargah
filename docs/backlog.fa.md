@@ -10,3 +10,7 @@
 | B6 | eval/benchmark/model routing (Warp) | بعد از ۲۰–۳۰ run لاگ‌شده | |
 | B7 | plugin: `init` با inventory، `retro` | بعد از موتور | INSTALL.md |
 | B8 | حذف legacy: `tui.py`، `web.py`، `trybox`، `qaloop` | بعد از جایگزینی | cap در test_structure |
+| B9 | **ادامه‌ی خودکار بعد از محدودیت مصرف، با ساعت واقعی** | فعلاً مالک label می‌زند | ساعت باز شدن محدودیت را از **خروجی** Codex/Claude با regex بخوان، نه حدس (پیام سه شکل دارد: تاریخ مطلق، فقط ساعت، یا مدت نسبی؛ و گاهی هیچ زمانی ندارد). v1 همین را در `agents.py` (`_reset_seconds`) دارد. اگر زمانی پیدا نشد: label `blocked` و مالک ادامه می‌دهد. |
+| B10 | **محدودیت Claude = review نداریم** | | review نباید رد شود: issue در حالت `waiting-review` می‌ماند و PR هرگز بدون review (یا تصمیم صریح مالک) merge نمی‌شود. |
+| B11 | **هزینه‌ی ادامه‌ی session بزرگ** | | ببینید بخش ۱۱ معماری: ادامه با session کش‌شده ارزان‌تر است، ولی بعد از انقضای کش یا compaction کل context دوباره حساب می‌شود. |
+

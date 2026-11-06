@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
+import json
 import os
 import signal
 import sys
@@ -22,16 +24,27 @@ from kargah.adapters.shell import BashShell
 from kargah.domain.agents import Definition
 from kargah.errors import KargahError
 from kargah.orchestrator.engine import Engine
+from kargah.orchestrator.inbox import collect_inbox, format_row
+from kargah.orchestrator.reporting import build_report, format_report
 from kargah.orchestrator.services import Services
 
 BOT_EMAIL = "kargah-bot@users.noreply"
 
 
-def build_engine(workdir: Path, builder: str = "", build_model: str = "") -> Engine:
+def _gitlab_env() -> tuple[str, str, str]:
     try:
-        url, project, token = (os.environ[k] for k in ("KARGAH_GITLAB_URL", "KARGAH_GITLAB_PROJECT", "KARGAH_GITLAB_TOKEN"))
+        return tuple(os.environ[k] for k in ("KARGAH_GITLAB_URL", "KARGAH_GITLAB_PROJECT", "KARGAH_GITLAB_TOKEN"))
     except KeyError as exc:
         raise KargahError(f"set {exc.args[0]} (see docs/architecture-A.fa.md)") from exc
+
+
+def _gitlab_tracker() -> GitLabTracker:
+    url, project, token = _gitlab_env()
+    return GitLabTracker(UrllibHttp(url, token), project)
+
+
+def build_engine(workdir: Path, builder: str = "", build_model: str = "") -> Engine:
+    url, project, token = _gitlab_env()
     http = UrllibHttp(url, token)
     workspace = GitWorkspace(workdir / "repo", f"{url}/{project}.git", token, ("kargah-bot", BOT_EMAIL))
     services = Services(
@@ -62,6 +75,22 @@ def validate(repo: Path) -> int:
     return 1 if problems else 0
 
 
+def _show(args: argparse.Namespace) -> int:
+    now = datetime.now(UTC)
+    try:
+        if args.command == "report":
+            data = build_report(args.workdir, args.since, now)
+            print(json.dumps(data, indent=2) if args.json else format_report(data))
+        else:
+            rows = collect_inbox(_gitlab_tracker(), now)
+            print(json.dumps([dataclasses.asdict(r) for r in rows], indent=2) if args.json
+                  else "\n".join(format_row(r) for r in rows) or "nothing waits for you")
+    except KargahError as exc:
+        print(f"kargah: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="kargah")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -72,11 +101,19 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--builder", choices=("codex", "claude"), default="",
                      help="override the implement agent's harness")
     run.add_argument("--build-model", default="")
+    report = sub.add_parser("report", help="numbers from the local records of a workdir")
+    report.add_argument("--workdir", type=Path, required=True)
+    report.add_argument("--since", default="7d", help="12h, 7d, 2w or all")
+    report.add_argument("--json", action="store_true")
+    inbox = sub.add_parser("inbox", help="the tickets that wait for the owner, oldest first")
+    inbox.add_argument("--json", action="store_true")
     check = sub.add_parser("validate", help="check the factory definition (.kargah/) of a repository")
     check.add_argument("--repo", type=Path, default=Path("."))
     args = parser.parse_args(argv)
     if args.command == "validate":
         return validate(args.repo)
+    if args.command in ("report", "inbox"):
+        return _show(args)
     try:
         engine = build_engine(args.workdir, args.builder, args.build_model)
     except KargahError as exc:

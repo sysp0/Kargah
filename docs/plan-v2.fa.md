@@ -349,7 +349,7 @@ QUESTION: <question for the owner>        (zero or more; any QUESTION stops and 
 
 ---
 
-## فاز 5: `kargah report` و `kargah inbox` (عددهای dashboard، بدون UI)
+## فاز 5: `kargah report` و `kargah inbox` (عددهای dashboard، بدون UI) ✅ (۲۰۲۶-۱۱-۰۶: `tests/test_metrics_inbox.py`؛ روی sandbox واقعی هم اجرا شد. بخش scorerها و `improvement_acceptance` آماده‌اند ولی داده‌شان بعد از فاز ۶ و ۷ می‌آید. انحراف: `cycle.*` و `human_interactions_per_mr` روی completionهای merged محاسبه می‌شوند؛ `cost_per_mr` جمع همه‌ی stepهای هر تیکت merged است، حتی قبل از بازه.)
 
 **5.1 `kargah inbox [--json]`**
 - نگاشت label به نوع (همان ۶ نوع inbox در Warp، به شکل ساده): `needs-info` ← Question؛ `needs-approval` ← Spec review؛ `needs-human` ← MR review؛ `blocked` ← Blocked.

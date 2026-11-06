@@ -55,3 +55,14 @@
 1. **timeout خواندن از GitLab** یک pass را با traceback کشت (قبل از این‌که ticket برداشته شود). تست: `tests/test_gitlab_http.py`؛ رفع: خواندن‌ها تا ۳ بار تکرار می‌شوند (timeout، خطای شبکه، 5xx)؛ نوشتن هرگز تکرار نمی‌شود. issue [#18](https://gitlab.com/sysp0/kargah-sandbox/-/issues/18) به همین دلیل پیش از شروع بسته شد (بدون اثر).
 2. Codex دوباره به سقف مصرف خورد (تا ۱۸:۱۰ UTC). `--builder claude` علامت `limit` را که روی ticket مانده نادیده نمی‌گیرد؛ برای ادامه باید مالک label `ready` را دوباره بزند (این کار انجام شد). **تصمیم برای مالک:** آیا با `--builder` صریح، انتظار limit باید نادیده گرفته شود؟
 3. هنگام ساخت comment با `glab api -f "position[...]"` موقعیت diff نادیده گرفته می‌شود (thread عمومی ساخته می‌شود)؛ برای تست DiffNote باید JSON فرستاد. کارخانه هر دو نوع را درست می‌خواند.
+
+## فاز ۴: triage، spec و گیت تأیید (live، ۲۰۲۶-۱۱-۰۶)
+
+| بررسی | issue / MR | نتیجه | هزینه |
+| --- | --- | --- | --- |
+| ticket بدون بخش معیار پذیرش ← triage ← build ← review | [#20](https://gitlab.com/sysp0/kargah-sandbox/-/issues/20) | triage: `SIZE: S`، ۳ معیار پذیرش و ۲ reference (comment با نشانه‌ی `triage size=S`)؛ build معیارها را در prompt گرفت؛ `needs-human` | triage ۰٫۰۸۵ + build ۰٫۱۳۳ + review ۰٫۱۰۲ = ۰٫۳۲ دلار |
+| ticket بزرگ‌تر (evaluator) | [#21](https://gitlab.com/sysp0/kargah-sandbox/-/issues/21) | triage آن را `M` سنجید (نه L)، پس بدون spec مستقیم به `needs-human` رفت (رفتار درست طبق `spec_min_size = L`) | چند دلار کمتر از ۱ (در `steps.jsonl`) |
+| spec اجباری (برای تست، `.kargah/config.toml` با `[stages] spec = "always"` روی main sandbox گذاشته و بعد از تست حذف شد) | [#22](https://gitlab.com/sysp0/kargah-sandbox/-/issues/22) / MR [!8](https://gitlab.com/sysp0/kargah-sandbox/-/merge_requests/8) | triage یک `QUESTION` پرسید (`average([])` چه شود؟) ← `needs-info` ← جواب مالک ← triage دوباره ← spec نوشته شد (`docs/specs/22.md`، commit با `Kargah-Task: spec`) ← `needs-approval` ← مالک یک تغییر خواست ← spec بازنویسی شد (دو comment `spec`)، تغییر در فایل دیده می‌شود | ۴ step، حدود ۰٫۴۰ دلار |
+| `/approve` ← build | همان #22 | **انجام نشد، مانع واقعی:** GitLab دستور `/approve` را خودش می‌بلعد؛ روی issue هیچ note ذخیره نمی‌شود (`note_0`) حتی با متن بعد از آن. `/revise` و `/decision` سالم می‌مانند. | – |
+
+**نتیجه‌ی مهم برای تصمیم مالک:** پیش‌فرض «و-۴» (تأیید فقط با `/approve`) روی GitLab کار نمی‌کند. طبق قاعده، این قدم را متوقف کردم و حدس نزدم؛ ticket #22 در `needs-approval` مانده است. پیشنهادهای ساده: (الف) label `approved` که مالک می‌زند (هم‌سبک بقیه‌ی UX)، (ب) کلمه‌ی ساده `approve` یا `LGTM` در ابتدای comment، (ج) هر دو. هر کدام فقط در `orchestrator/progress.py::_spec` (و متن comment bot) عوض می‌شود.

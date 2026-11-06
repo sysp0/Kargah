@@ -58,6 +58,9 @@ Plan v2 steps done (2026-11-06): **0.4** proof: the new tests must pass on the c
 ## Decisions made (owner)
 Option A (real factory) · GitLab first, tracker-agnostic ports · label-driven UX (no mention needed) · one run at a time · bot role Developer, no push to `main` · one ticket = one task for now · only the owner creates tickets (backlog: factory-created) · plan with many tasks = parent issue + one child per task, `publish` idempotent via hidden `plan-id/task-id` (NOT built yet) · `/decision` comments become project files · Codex/Claude limit = auto-continue using parsed time, else label by owner · review must never be skipped when Claude is limited · idelop group and bot-in-group: later (personal namespace for now; group project access tokens are refused by GitLab) · size/SOLID rules are for this repo only, never imposed on user projects · GitLab history is unimportant, only GitHub matters.
 
+## Open owner decision (found live, 2026-11-06)
+`/approve` cannot be the approval command on GitLab issues: GitLab treats it as an MR quick action and **drops the whole note** (no comment is stored, even with text after it). `/revise` and `/decision` are kept as text. Until the owner picks another way (label `approved`, or a plain word such as `approve`/`LGTM`), the spec gate can only be passed by re-labelling by hand. Sandbox issue #22 waits in `needs-approval` with a finished spec (MR !8).
+
 ## Not done / known risks
 1. Codex as builder on a full ticket not yet run (limited until 02:24 UTC); only its limit path is proven.
 2. `publish` (plan file to parent+child issues), `blocks`-style dependencies (GitLab `blocks` needs a paid plan; the engine must enforce `Depends:` itself), plugin (`init`, inventory, `retro`, `/rate`) not built. `INSTALL.md` is a draft.

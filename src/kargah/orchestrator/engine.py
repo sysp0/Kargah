@@ -14,7 +14,8 @@ from kargah.orchestrator.lock import RunLock
 from kargah.orchestrator.run import TicketRun
 from kargah.orchestrator.services import Services
 
-ORDER = (Label.IN_PROGRESS, Label.WAITING_REVIEW, Label.NEEDS_INFO, Label.NEEDS_HUMAN, Label.READY)   # recover before starting new
+ORDER = (Label.IN_PROGRESS, Label.WAITING_REVIEW, Label.NEEDS_INFO, Label.NEEDS_APPROVAL, Label.NEEDS_HUMAN,
+         Label.READY)   # recover before starting new
 
 
 class Engine:

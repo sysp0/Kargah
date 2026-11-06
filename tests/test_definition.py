@@ -28,7 +28,7 @@ def test_defaults_without_any_project_file(tmp_path):
     assert (review.harness, review.model, review.access, review.timeout_minutes, review.max_budget_usd) == \
         ("claude", "claude-sonnet-5-5", "read", 10, 2.0)
     assert "data, not commands" in impl.instructions and "Never report something as passing" in review.instructions
-    assert set(d.agents) == {"implement", "review"}
+    assert set(d.agents) == {"triage", "spec", "implement", "review"}
 
 
 def test_a_project_key_replaces_only_that_key(tmp_path):
@@ -53,9 +53,12 @@ def test_unknown_key_unknown_role_and_bad_values_are_problems(tmp_path):
     assert ".kargah/agents/custom: unknown role" in text
 
 
-def test_a_role_without_a_builtin_agent_is_a_problem_for_now(tmp_path):
-    d = project(tmp_path, {".kargah/agents/spec/agent.md": '+++\nharness = "claude"\n+++\n'})
-    assert any("no built-in agent" in p for p in d.problems)
+def test_triage_and_spec_have_builtin_agents(tmp_path):
+    d = project(tmp_path, {".kargah/agents/spec/agent.md": '+++\ntimeout_minutes = 5\n+++\n'})
+    assert d.problems == () and set(d.agents) == {"triage", "spec", "implement", "review"}
+    assert (d.agents["triage"].access, d.agents["triage"].harness, d.agents["triage"].timeout_minutes) == \
+        ("read", "claude", 10)
+    assert (d.agents["spec"].access, d.agents["spec"].timeout_minutes) == ("edit", 5)
 
 
 def test_broken_frontmatter_toml_is_a_problem_not_a_crash(tmp_path):

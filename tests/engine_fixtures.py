@@ -28,7 +28,8 @@ SEED = {
     "src/calc/__init__.py": "from calc.ops import add\n",
     "src/calc/ops.py": "def add(a, b):\n    return a + b\n",
     "tests/test_ops.py": "from calc import add\n\n\ndef test_add():\n    assert add(1, 2) == 3\n",
-    ".kargah/config.toml": f'[check]\ncommand = "{sys.executable} -m pytest -q"\n[proof]\ncommand = "{sys.executable} -m pytest -q"\n',
+    ".kargah/config.toml": f'[check]\ncommand = "{sys.executable} -m pytest -q"\n[proof]\ncommand = "{sys.executable} -m pytest -q"\n'
+                        '[stages]\ntriage = "never"\nspec = "never"\n',
 }
 MULTIPLY_TEST = "from calc import multiply\n\n\ndef test_multiply():\n    assert multiply(3, 4) == 12\n"
 MULTIPLY_CODE = "def add(a, b):\n    return a + b\n\n\ndef multiply(a, b):\n    return a * b\n"
@@ -163,6 +164,7 @@ class World:
     host: FakeGitHost
     builder: Scripted
     reviewer: Scripted
+    planner: Scripted
     clock: Clock
     remote: Path
     workdir: Path
@@ -175,15 +177,17 @@ class World:
         return git(self.remote, "log", "--format=%s%n%(trailers:only,unfold)", branch)
 
 
-def make_world(tmp: Path, builder_steps: list, reviewer_steps: list, files: dict[str, str] | None = None) -> World:
+def make_world(tmp: Path, builder_steps: list, reviewer_steps: list, files: dict[str, str] | None = None,
+               planner_steps: list | None = None) -> World:
     remote = make_remote(tmp, files)
     clock = Clock()
     tracker, host = MemoryTracker(), FakeGitHost(clock)
-    builder, reviewer = Scripted(builder_steps), Scripted(reviewer_steps)
+    builder, reviewer, planner = Scripted(builder_steps), Scripted(reviewer_steps), Scripted(planner_steps or [])
+    by_role = {"implement": builder, "review": reviewer}
     workdir = tmp / "work"
     counter = iter(range(1, 1000))
     services = Services(
         tracker=tracker, githost=host, workspace=GitWorkspace(workdir / "repo", str(remote), "x", ("bot", "b@b")),
-        harness_for=lambda spec: builder if spec.role == "implement" else reviewer, shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"), runs=FsRunStore(workdir), bot_email="b@b",
+        harness_for=lambda spec: by_role.get(spec.role, planner), shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"), runs=FsRunStore(workdir), bot_email="b@b",
         load_definition=lambda ws: load_definition(DefaultBranchSource(ws)), clock=clock, run_id=lambda: f"r{next(counter)}")
-    return World(Engine(services, workdir / "state"), tracker, host, builder, reviewer, clock, remote, workdir)
+    return World(Engine(services, workdir / "state"), tracker, host, builder, reviewer, planner, clock, remote, workdir)

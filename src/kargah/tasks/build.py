@@ -37,10 +37,10 @@ class BuildTask:
         self._harness, self._shell, self._cfg, self._agent = harness, shell, config, agent
 
     def run(self, ws: Workspace, ticket: Ticket, owner_comments: Sequence[Comment], base: str, *,
-            rework_items: Sequence[str] = (), rework_source: str = "The reviewer",
+            rework_items: Sequence[str] = (), rework_source: str = "The reviewer", context: str = "",
             should_stop: Callable[[], bool] | None = None) -> BuildResult:
         values = dict(number=ticket.number, title=ticket.title, body=ticket.body,
-                      check_command=self._cfg.check_command, conversation=conversation(owner_comments), progress="",
+                      check_command=self._cfg.check_command, conversation=conversation(owner_comments), progress=context,
                       must_fix="\n".join(f"- {i}" for i in rework_items), source=rework_source)
         prompt = compose(self._agent, render("rework" if rework_items else "build", **values),
                          check_command=self._cfg.check_command)

@@ -28,3 +28,17 @@ def test_codex_usage_reads_cached_tokens():
     event = {"type": "turn.completed", "usage": {"input_tokens": 10, "cached_input_tokens": 6, "output_tokens": 2}}
     assert _usage(json.dumps(event)) == (10, 2, 6)
     assert _usage("not json") == (None, None, None)
+
+
+def test_task_commits_read_the_trailers_newest_first(tmp_path):
+    remote = make_remote(tmp_path)
+    ws = GitWorkspace(tmp_path / "repo", str(remote), "x", ("bot", "b@b"))
+    ws.prepare("kargah/1", "main")
+    assert ws.task_commits("main") == []
+    ws.write_file("a.txt", "1")
+    first = ws.commit("spec", {"Kargah-Task": "spec", "Kargah-State": "complete"})
+    ws.write_file("a.txt", "2")
+    second = ws.commit("wip", {"Kargah-Task": "build", "Kargah-State": "incomplete"})
+    ws.write_file("a.txt", "3")
+    third = ws.commit("plain", {})
+    assert ws.task_commits("main") == [(third, "", ""), (second, "build", "incomplete"), (first, "spec", "complete")]

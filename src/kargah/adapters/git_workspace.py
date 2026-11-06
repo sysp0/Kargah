@@ -56,6 +56,13 @@ class GitWorkspace:
     def has_work(self, base: str) -> bool:
         return int(self._git("rev-list", "--count", f"origin/{base}..HEAD")) > 0
 
+    def task_commits(self, base: str) -> list[tuple[str, str, str]]:
+        fmt = (f"%H%x1f%(trailers:key=Kargah-Task,valueonly,unfold)%x1f"
+               f"%(trailers:key={STATE_TRAILER},valueonly,unfold)%x1e")
+        out = self._git("log", f"origin/{base}..HEAD", f"--format={fmt}", check=False)
+        rows = [r.strip("\n") for r in out.split("\x1e") if r.strip()]
+        return [(a, b.strip(), c.strip()) for a, b, c in (r.split("\x1f") for r in rows)]
+
     def head_state(self) -> str | None:
         out = self._git("log", "-1", f"--format=%(trailers:key={STATE_TRAILER},valueonly)", check=False)
         return out.strip() or None

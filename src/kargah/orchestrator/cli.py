@@ -52,6 +52,7 @@ def _overridden(definition: Definition, builder: str, model: str) -> Definition:
             changes["model"] = ""            # a model of the other harness would not be understood
     if model:
         changes["model"] = model
+        changes["models_by_size"] = {}            # an explicit model beats the size router
     return with_overrides(definition, "implement", **changes) if changes else definition
 
 

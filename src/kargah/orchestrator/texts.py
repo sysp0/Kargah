@@ -45,3 +45,16 @@ def merged(url: str) -> str:
 
 def cancelled() -> str:
     return "Cancelled: the issue was closed. The branch and draft MR are kept."
+
+
+def triage_body(report_text: str) -> str:
+    return f"Triage:\n\n{report_text}"
+
+
+def questions_body(questions: tuple[str, ...]) -> str:
+    items = "\n".join(f"> {q}" for q in questions)
+    return f"I need answers before I can go on:\n\n{items}\n\nReply in this ticket; I continue when I see your comment."
+
+
+def spec_body(url: str, path: str) -> str:
+    return (f"Spec ready: {url} (`{path}`). Reply `/approve` to start the build, or comment what to change.")

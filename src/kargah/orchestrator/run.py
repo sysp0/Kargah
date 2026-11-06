@@ -1,68 +1,32 @@
 """Run one ticket through build -> review -> rework until it needs a human. All state lives in git and the tracker."""
 from __future__ import annotations
 
-import itertools
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
-from datetime import datetime
-
-from kargah.domain.agents import AgentSpec
 from kargah.domain.config import ProjectConfig
 from kargah.domain.decision import Action, Decision
 from kargah.domain.inputs import is_bot_comment
 from kargah.domain.markers import bot_comment
-from kargah.domain.records import StepRecord
-from kargah.domain.stages import Progress, Stage, next_stage
+from kargah.domain.stages import Policy, Progress, Stage, next_stage
 from kargah.domain.ticket import STATUS_LABELS, Comment, Label, Ticket
+from kargah.domain.triage import body_has_acceptance
 from kargah.orchestrator import texts
 from kargah.orchestrator.closing import Closer
+from kargah.orchestrator.context import Ctx
 from kargah.orchestrator.feedback import already_handed_over, record_feedback, resolve_addressed
 from kargah.orchestrator.interrupt import InterruptWatch
-from kargah.orchestrator.progress import bot_markers, latest_feedback, latest_verdict, read_progress
-from kargah.orchestrator.recording import RecordingHarness
+from kargah.orchestrator.planning import Planning
+from kargah.orchestrator.progress import latest_feedback, latest_verdict, read_progress
 from kargah.orchestrator.services import Services
-from kargah.ports.harness import Harness
 from kargah.tasks.build import BuildTask
 from kargah.tasks.decisions import decision_files
+from kargah.tasks.prompting import build_context, sized_agent
 from kargah.tasks.review import ReviewTask
 
 MAX_STEPS = 12
 
 
-@dataclass
-class Stats:
-    build_rounds: int = 0
-    check_fails: int = 0
-    reviews: int = 0
-    must_fix: int = 0
-    tokens: int = 0
-    cost_usd: float = 0.0
-    commit: str = ""
-    notes: list[str] = field(default_factory=list)
-
-
-@dataclass
-class Ctx:
-    ticket: Ticket
-    run: str
-    bot_id: int
-    cfg: ProjectConfig
-    branch: str
-    stats: Stats = field(default_factory=Stats)
-    should_stop: Callable[[], bool] | None = None      # the owner's interrupt label, polled while an agent runs
-    steps: list[StepRecord] = field(default_factory=list)      # the agent calls of this run (see recording.py)
-    agents: Mapping[str, AgentSpec] = field(default_factory=dict)
-    builder: Harness | None = None                     # the services' harnesses, wrapped to record every call
-    reviewer: Harness | None = None
-
-    @property
-    def number(self) -> int:
-        return self.ticket.number
-
-
-class TicketRun:
+class TicketRun(Planning):
     def __init__(self, services: Services) -> None:
-        self.s = services
+        super().__init__(services)
         self._closer = Closer(services)
 
     # ---- entry points ---------------------------------------------------------------------------------------
@@ -96,15 +60,32 @@ class TicketRun:
                 return ended
             comments = s.tracker.comments(ctx.number)
             progress = read_progress(s.workspace, comments, ctx.bot_id, ctx.cfg.base_branch)
-            stage = next_stage(progress, ctx.cfg.max_rework)
+            stage = next_stage(progress, ctx.cfg.max_rework, self._policy(ctx))
+            if stage is Stage.AWAIT_APPROVAL:
+                return self._await_approval(ctx)
             if stage is Stage.PASS:
                 return self._pass(ctx, comments)
             if stage is Stage.BLOCKED:
                 return self._block(ctx, "the reviewer still found must-fix problems after the allowed rework rounds")
-            outcome = self._review(ctx) if stage is Stage.REVIEW else self._build(ctx, stage, comments, progress)
+            outcome = self._stage(ctx, stage, comments, progress)
             if outcome:
                 return outcome
         return self._block(ctx, "too many steps in one run")
+
+    def _stage(self, ctx: Ctx, stage: Stage, comments: list[Comment], progress: Progress) -> str | None:
+        if stage is Stage.TRIAGE:
+            if ctx.triaged:
+                return self._block(ctx, "the triage report was not accepted after it was written")
+            ctx.triaged = True
+            return self._triage(ctx, comments)
+        if stage is Stage.SPEC:
+            return self._spec(ctx, comments, progress.triage)
+        return self._review(ctx) if stage is Stage.REVIEW else self._build(ctx, stage, comments, progress)
+
+    @staticmethod
+    def _policy(ctx: Ctx) -> Policy:
+        c = ctx.cfg
+        return Policy(c.triage_policy, c.spec_policy, c.spec_min_size, body_has_acceptance(ctx.ticket.body))
 
     def _safe_point(self, ctx: Ctx) -> str | None:
         """Between two steps: did the owner interrupt, close the issue, or merge the MR meanwhile?"""
@@ -131,8 +112,10 @@ class TicketRun:
         verdict = latest_verdict(comments, ctx.bot_id, ws.head()) if stage is Stage.REWORK else None
         from_owner = bool(asked) and progress.feedback_open      # the owner's request outranks an older review
         items = asked if from_owner else (verdict.must_fix if verdict else ())
-        task = BuildTask(ctx.builder, s.shell, ctx.cfg, ctx.agents["implement"])
+        agent = sized_agent(ctx.agents["implement"], progress.triage)
+        task = BuildTask(ctx.harnesses["implement"], s.shell, ctx.cfg, agent)
         result = task.run(ws, ctx.ticket, owners, ctx.cfg.base_branch, rework_items=items,
+                          context=build_context(progress, ctx.number),
                           rework_source="The owner" if from_owner else "The reviewer", should_stop=ctx.should_stop)
         ctx.stats.build_rounds += 1
         ctx.stats.check_fails += result.check_fails
@@ -145,7 +128,7 @@ class TicketRun:
             return None
         self._save(ctx, "incomplete", stage)
         if result.status == "question":
-            s.tracker.post_comment(ctx.number, bot_comment("question", ctx.run, texts.question(result.question)))
+            self._post_once(ctx, "question", texts.question(result.question))
             self._labels(ctx.number, add=(Label.NEEDS_INFO,), remove=(Label.IN_PROGRESS,))
             return "question"
         if result.status == "limit":
@@ -154,7 +137,7 @@ class TicketRun:
 
     def _review(self, ctx: Ctx) -> str | None:
         s = self.s
-        task = ReviewTask(ctx.reviewer, ctx.agents["review"])
+        task = ReviewTask(ctx.harnesses["review"], ctx.agents["review"])
         result = task.run(s.workspace, ctx.ticket, ctx.cfg.base_branch, ctx.should_stop)
         if result.status == "interrupted":
             return self._interrupted(ctx)
@@ -183,79 +166,3 @@ class TicketRun:
                                                            sha=ws.head()))
         self._labels(ctx.number, add=(Label.NEEDS_HUMAN,), remove=(Label.IN_PROGRESS, Label.WAITING_REVIEW))
         return "needs-human"
-
-    def _limited(self, ctx: Ctx, resets_at: datetime | None, who: str, keep: Label) -> str:
-        s = self.s
-        if resets_at is None:
-            s.tracker.post_comment(ctx.number, bot_comment("blocked", ctx.run, texts.limit(None, who)))
-            self._labels(ctx.number, add=(Label.BLOCKED,), remove=(Label.IN_PROGRESS, Label.WAITING_REVIEW))
-            return "limit-unknown"
-        stamp = resets_at.isoformat()
-        s.tracker.post_comment(ctx.number, bot_comment("limit", ctx.run, texts.limit(stamp, who), resume_at=stamp))
-        self._labels(ctx.number, add=(keep,),
-                     remove=tuple(x for x in (Label.IN_PROGRESS, Label.WAITING_REVIEW) if x != keep))
-        return "limit"
-
-    def _interrupted(self, ctx: Ctx) -> str:
-        # no bot comment here: a comment after the owner's urgent message would hide it from the next run
-        self._save(ctx, "incomplete", Stage.BUILD)
-        self._labels(ctx.number, add=(Label.NEEDS_INFO,), remove=(Label.INTERRUPT, Label.IN_PROGRESS))
-        return "interrupted"
-
-    def _block(self, ctx: Ctx, reason: str) -> str:
-        text = texts.blocked(reason)
-        last = bot_markers(self.s.tracker.comments(ctx.number), ctx.bot_id)
-        if not last or last[-1][1].kind != "blocked" or text not in last[-1][0].body:
-            self.s.tracker.post_comment(ctx.number, bot_comment("blocked", ctx.run, text))   # not twice after a crash
-        self._labels(ctx.number, add=(Label.BLOCKED,), remove=tuple(x for x in STATUS_LABELS if x != Label.BLOCKED))
-        return "blocked"
-
-    # ---- helpers --------------------------------------------------------------------------------------------
-    def _save(self, ctx: Ctx, state: str, stage: Stage) -> str | None:
-        ws = self.s.workspace
-        title = f"#{ctx.number} {ctx.ticket.title}"
-        sha = ws.commit(("WIP: " if state == "incomplete" else "feat: ") + title,
-                        {"Kargah-Task": stage.value, "Kargah-Issue": f"#{ctx.number}", "Kargah-State": state})
-        if sha:
-            ws.push(ctx.branch)
-            self.s.githost.ensure_draft_mr(ctx.branch, ctx.cfg.base_branch, title, f"Closes #{ctx.number}")
-            ctx.stats.commit = sha
-        return sha
-
-    def _close_wip(self, ctx: Ctx, stage: Stage) -> bool:
-        """The build is done with nothing new to commit: an incomplete WIP commit becomes complete (empty commit)."""
-        ws = self.s.workspace
-        if ws.head_state() != "incomplete":
-            return False
-        sha = ws.commit(f"feat: #{ctx.number} {ctx.ticket.title}", {"Kargah-Task": stage.value,
-                        "Kargah-Issue": f"#{ctx.number}", "Kargah-State": "complete"}, allow_empty=True)
-        ws.push(ctx.branch)
-        ctx.stats.commit = sha or ""
-        return True
-
-    def _record_steps(self, ctx: Ctx) -> None:
-        s, numbers = self.s, itertools.count(1)
-        text = f"# #{ctx.number} {ctx.ticket.title}\n\n{ctx.ticket.body}"
-
-        def wrap(inner: Harness) -> Harness:
-            return RecordingHarness(inner, s.runs, ctx.cfg.prices, s.clock, ctx.run, ctx.number, s.workspace,
-                                    ctx.cfg.base_branch, text, numbers, ctx.steps)
-        ctx.builder = wrap(s.harness_for(ctx.agents["implement"]))
-        ctx.reviewer = wrap(s.harness_for(ctx.agents["review"]))
-
-    def _labels(self, number: int, add: tuple[Label, ...], remove: tuple[Label, ...]) -> None:
-        for label in add:                    # add first: a crash in between leaves two labels, never none
-            self.s.tracker.add_label(number, label)
-        for label in remove:
-            self.s.tracker.remove_label(number, label)
-
-    def _record(self, ctx: Ctx, outcome: str, started: datetime) -> None:
-        now = self.s.clock()
-        st = ctx.stats
-        known = [r.cost_usd for r in ctx.steps if r.cost_usd is not None]
-        self.s.log.append({
-            "kind": "run", "schema_version": 1, "steps": len(ctx.steps), "cost_usd": round(sum(known), 4),
-            "cost_unknown_steps": len(ctx.steps) - len(known), "ticket": ctx.number, "run": ctx.run, "outcome": outcome,
-            "started": started.isoformat(), "seconds": round((now - started).total_seconds(), 1),
-            "commit_sha": st.commit or None, "build_rounds": st.build_rounds, "check_fails": st.check_fails,
-            "reviews": st.reviews, "must_fix": st.must_fix, "tokens": st.tokens, "review_cost_usd": round(st.cost_usd, 4)})

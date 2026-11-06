@@ -20,6 +20,9 @@ class Workspace(Protocol):
     def has_work(self, base: str) -> bool:
         """The branch has commits beyond the base."""
 
+    def task_commits(self, base: str) -> list[tuple[str, str, str]]:
+        """(sha, Kargah-Task, Kargah-State) of every commit beyond the base, newest first; "" for a missing trailer."""
+
     def head_state(self) -> str | None:
         """The `Kargah-State` trailer of HEAD, or None."""
 

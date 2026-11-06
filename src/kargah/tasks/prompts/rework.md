@@ -4,3 +4,5 @@ $source asked for changes to your work on ticket #$number: $title
 $must_fix
 
 $conversation
+
+$progress

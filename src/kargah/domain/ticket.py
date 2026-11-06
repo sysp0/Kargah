@@ -13,6 +13,7 @@ class Label(StrEnum):
     NEEDS_HUMAN = "needs-human"
     WAITING_REVIEW = "waiting-review"
     BLOCKED = "blocked"
+    NEEDS_APPROVAL = "needs-approval"     # a spec is waiting for the owner's /approve
     INTERRUPT = "interrupt"
     DONE = "done"
     FACTORY_CHANGE = "factory-change"     # set by the owner: this ticket may change the factory definition
@@ -43,4 +44,4 @@ class Ticket:
 
 
 STATUS_LABELS = (Label.READY, Label.IN_PROGRESS, Label.NEEDS_INFO, Label.NEEDS_HUMAN, Label.WAITING_REVIEW,
-                 Label.BLOCKED)      # exactly one of these sits on an active ticket
+                 Label.BLOCKED, Label.NEEDS_APPROVAL)      # exactly one of these sits on an active ticket

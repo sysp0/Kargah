@@ -17,6 +17,9 @@ class ProjectConfig:
     max_fix_rounds: int = 1       # extra build rounds inside one run after a failed check or proof
     max_rework: int = 2           # review-driven rework rounds before the ticket is blocked
     max_starts: int = 5           # stopped runs recovered before the ticket is blocked
+    triage_policy: str = "auto"   # [stages] triage: auto (when the body has no acceptance section) | always | never
+    spec_policy: str = "auto"     # [stages] spec: auto (size >= spec_min_size or an ambiguity) | always | never
+    spec_min_size: str = "L"
     check_timeout_seconds: int = 1800     # one run of the check or of the proof command
     prices: Mapping[str, ModelPrice] = field(default_factory=dict)    # [pricing."<model>"], USD per million tokens
     runs_keep_days: int = 30      # step folders (prompt, reply, diff) older than this are deleted; records stay

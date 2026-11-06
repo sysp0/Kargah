@@ -286,7 +286,7 @@ def decide_handoff(ticket, comments, mr: MrView | None, discussions, bot_id) -> 
 
 ---
 
-## فاز 4: Triage، Spec و گیت تأیید
+## فاز 4: Triage، Spec و گیت تأیید ✅ (کد و تست‌ها ۲۰۲۶-۱۱-۰۶: `tests/test_triage.py`، `test_stages.py` (۲۵ مورد جدول)، `test_planning.py`. انجام‌نشده: **4.7** (اختیاری، `DECIDE` در review). انحراف‌ها: `next_stage(p, max_rework, policy=None)` — بدون policy رفتار قدیمی (triage/spec خاموش) می‌ماند؛ `Progress.has_build=None` یعنی همان `has_work`؛ `Ctx`/`Stats` به `context.py` و کمک‌های مشترک به `endings.py` رفتند و triage/spec در `planning.py` هستند چون `run.py` از ۳۰۰ خط می‌گذشت؛ سؤال و `blocked` بعد از crash دوباره گذاشته نمی‌شوند (`_post_once`)؛ triage در یک run دو بار اجرا نمی‌شود؛ `--build-model` جدول size را خاموش می‌کند. اجرای live هنوز لازم است.)
 
 **4.1 جدول ۵ پرسش** برای triage و spec در `docs/tasks.fa.md` (قبل از کد).
 

@@ -34,6 +34,24 @@
 | ۴. انسان کجا | بعد از ۲ دور: `blocked` |
 | ۵. مانع تکرار | شمارنده‌ی دور از trailerها/نشانه‌های git و tracker |
 
+## triage (فاز ۴؛ نوشته‌شده ۲۰۲۶-۱۱-۰۶)
+| پرسش | پاسخ |
+| --- | --- |
+| ۱. trigger | ticket `ready` که در body بخش معیار پذیرش (`## Acceptance criteria` یا «معیار پذیرش») ندارد (`[stages] triage = auto`)، یا `always` |
+| ۲. چه می‌کند | agent فقط‌خواندنی (Claude) کد را می‌خواند و می‌نویسد: `SIZE` (XS تا XL)، `AMBIGUITY` (فقط وقتی انسان باید تصمیم بگیرد)، یک یا چند `ACCEPTANCE` قابل‌چک، `REFERENCE`، و هر `QUESTION`. issue مالک را **ویرایش نمی‌کند**؛ گزارش یک comment با نشانه‌ی `triage size=.. ambiguous=..` است |
+| ۳. بعدش | `spec` اگر size ≥ `spec_min_size` یا ابهام؛ وگرنه build با معیارهای triage در prompt |
+| ۴. انسان کجا | هر `QUESTION` ← `needs-info` (همه‌ی سؤال‌ها یک‌جا)؛ جواب مالک ← triage دوباره |
+| ۵. مانع تکرار | یک comment `triage` برای هر ticket؛ خروجی نامعتبر یک بار دوباره، بار دوم `blocked`؛ در یک run هرگز دو بار |
+
+## spec (فاز ۴؛ نوشته‌شده ۲۰۲۶-۱۱-۰۶)
+| پرسش | پاسخ |
+| --- | --- |
+| ۱. trigger | بعد از triage: size ≥ `spec_min_size` (پیش‌فرض L) یا ابهام، یا `[stages] spec = always` |
+| ۲. چه می‌کند | agent (Claude، با حق نوشتن) اگر سؤال باز دارد فقط `QUESTION:` می‌پرسد؛ وگرنه `docs/specs/<n>.md` را می‌نویسد (Summary، Behavior، Technical design، Decisions، Assumptions، Out of scope، Validation criteria). **تنها فایل تغییرکرده** باید همین باشد (یک بار اصلاح، بعد `blocked`). commit با `Kargah-Task: spec` و `Kargah-State: complete`، push، draft MR |
+| ۳. بعدش | comment `spec` با لینک و label `needs-approval`؛ بعد از `/approve` ← build که spec را چک‌لیست خود می‌داند |
+| ۴. انسان کجا | `needs-approval`: `/approve` = تأیید؛ هر comment دیگر = درخواست تغییر ← spec دوباره |
+| ۵. مانع تکرار | spec تازه فقط بعد از comment انسان؛ بدون comment، `AWAIT_APPROVAL` هیچ comment تازه‌ای نمی‌گذارد؛ review از spec استفاده می‌کند (`docs/specs/<n>.md` موجود ← MUST-FIX برای رفتار ناقص) |
+
 ## قواعد ورودی انسان (دقیق)
 - ورودی = comment نویسنده‌ی **غیر bot** که بعد از آخرین comment bot آمده، روی ticketی که `needs-info` است.
 - comment نویسنده‌ی bot (شناسه‌ی کاربر یا نشانه‌ی پنهان `<!-- kargah:` ) **هرگز** ورودی نیست.

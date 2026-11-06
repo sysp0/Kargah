@@ -4,6 +4,7 @@ from __future__ import annotations
 import tomllib
 from dataclasses import fields
 
+from kargah.domain.agents import SIZES
 from kargah.domain.config import ProjectConfig
 from kargah.domain.pricing import ModelPrice
 from kargah.errors import KargahError
@@ -14,7 +15,8 @@ _MAP = {  # config.toml `section.key` -> ProjectConfig field
     "proof.test_paths": "proof_test_paths", "proof.fail_codes": "proof_fail_codes",
     "limits.max_fix_rounds": "max_fix_rounds",
     "limits.max_rework": "max_rework", "runs.keep_days": "runs_keep_days", "limits.max_starts": "max_starts",
-    "check.timeout_seconds": "check_timeout_seconds",
+    "check.timeout_seconds": "check_timeout_seconds", "stages.triage": "triage_policy", "stages.spec": "spec_policy",
+    "stages.spec_min_size": "spec_min_size",
 }
 
 
@@ -41,7 +43,13 @@ def parse_project_config(text: str | None) -> ProjectConfig:
             values[name] = tuple(value) if isinstance(value, list) else value
     assert set(values) <= known
     values["prices"] = _prices(data.get("pricing", {}))
-    return ProjectConfig(**values)  # type: ignore[arg-type]
+    config = ProjectConfig(**values)  # type: ignore[arg-type]
+    for name in ("triage_policy", "spec_policy"):
+        if getattr(config, name) not in ("auto", "always", "never"):
+            raise KargahError(f"{CONFIG}: [stages] {name.removesuffix('_policy')} must be auto, always or never")
+    if config.spec_min_size not in SIZES:
+        raise KargahError(f"{CONFIG}: [stages] spec_min_size must be one of {', '.join(SIZES)}")
+    return config
 
 
 def _prices(table: dict) -> dict[str, ModelPrice]:

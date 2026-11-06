@@ -42,3 +42,16 @@
 | interrupt وسط اجرای agent (برچسب `interrupt` ۲۲ ثانیه بعد از شروع run) | [#13](https://gitlab.com/sysp0/kargah-sandbox/-/issues/13) | agent حدود ۱۸ ثانیه بعد از گذاشتن label متوقف شد؛ status step = `stopped`؛ label ← `needs-info` (بدون WIP-commit چون هنوز فایلی عوض نشده بود) | ۱ step، ۴۰ ثانیه |
 
 اشکال زنده‌ای در این سه بررسی دیده نشد. مشاهده‌ها: (۱) هزینه‌ی Codex همیشه `unknown` است مگر مالک در `.kargah/config.toml` بخش `[pricing."<model>"]` بگذارد؛ (۲) `last-run.txt` و `log.jsonl` قدیمی هنوز کنار فایل‌های تازه هستند و مشکلی ایجاد نمی‌کنند.
+
+## فاز ۳: چرخه‌ی کامل بعد از handoff (live، ۲۰۲۶-۱۱-۰۶)
+
+| بررسی | issue / MR | نتیجه | هزینه / زمان |
+| --- | --- | --- | --- |
+| مالک MR را merge می‌کند | [#6](https://gitlab.com/sysp0/kargah-sandbox/-/issues/6) / MR [!3](https://gitlab.com/sysp0/kargah-sandbox/-/merge_requests/3) | pass بعدی: label `done`، issue بسته شد، comment «Merged»، و رکورد `kind: completion` (`outcome: merged`) در `log.jsonl`. هیچ agentی اجرا نشد. | ۰ دلار |
+| comment روی diff ← revise ← review ← resolve | [#8](https://gitlab.com/sysp0/kargah-sandbox/-/issues/8) / MR [!2](https://gitlab.com/sysp0/kargah-sandbox/-/merge_requests/2) | thread اول (یک thread عمومی): rework با Claude، review (۱ MUST-FIX و بعد PASS)، thread با «Addressed in 8ab29233.» resolve شد. thread دوم (یک DiffNote روی `src/calc/ops.py:10`): `ITEM: src/calc/ops.py:10 | …` درست خوانده شد؛ builder یک `QUESTION` پرسید ← `needs-info` ← جواب مالک ← rework ← review ← thread resolve شد («Addressed in 2b0609f0.»). | ۴ ← ۲ ← ۲ step؛ مجموع حدود ۰٫۷۳ دلار (rework ۰٫۴۲۴ + ۰٫۰۹۳ + ۰٫۲۱۵ شامل review) |
+| issue بسته‌شده وسط کار | [#19](https://gitlab.com/sysp0/kargah-sandbox/-/issues/19) / MR [!5](https://gitlab.com/sysp0/kargah-sandbox/-/merge_requests/5) | بعد از build، نقطه‌ی امن بسته‌شدن را دید ← comment «Cancelled», برداشتن labelها، رکورد `completion` با `outcome: cancelled`؛ branch و draft MR ماندند. | ۰٫۱۳ دلار، ۵۵ ثانیه |
+
+اشکال‌های زنده:
+1. **timeout خواندن از GitLab** یک pass را با traceback کشت (قبل از این‌که ticket برداشته شود). تست: `tests/test_gitlab_http.py`؛ رفع: خواندن‌ها تا ۳ بار تکرار می‌شوند (timeout، خطای شبکه، 5xx)؛ نوشتن هرگز تکرار نمی‌شود. issue [#18](https://gitlab.com/sysp0/kargah-sandbox/-/issues/18) به همین دلیل پیش از شروع بسته شد (بدون اثر).
+2. Codex دوباره به سقف مصرف خورد (تا ۱۸:۱۰ UTC). `--builder claude` علامت `limit` را که روی ticket مانده نادیده نمی‌گیرد؛ برای ادامه باید مالک label `ready` را دوباره بزند (این کار انجام شد). **تصمیم برای مالک:** آیا با `--builder` صریح، انتظار limit باید نادیده گرفته شود؟
+3. هنگام ساخت comment با `glab api -f "position[...]"` موقعیت diff نادیده گرفته می‌شود (thread عمومی ساخته می‌شود)؛ برای تست DiffNote باید JSON فرستاد. کارخانه هر دو نوع را درست می‌خواند.

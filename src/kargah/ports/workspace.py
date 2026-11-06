@@ -49,5 +49,8 @@ class Workspace(Protocol):
 
     def push(self, branch: str) -> None: ...
 
+    def worktree(self, sha: str, path: Path) -> AbstractContextManager[Workspace]:
+        """A detached checkout of a commit as a workspace of its own (benchmark trials); removed on exit."""
+
     def base_variant(self, base: str, keep_paths: list[str]) -> AbstractContextManager[Path]:
         """A temporary checkout of the base commit plus the given files from the working tree."""

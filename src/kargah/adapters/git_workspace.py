@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -14,6 +15,11 @@ from kargah.errors import KargahError
 
 STATE_TRAILER = "Kargah-State"
 MAX_DIFF_CHARS = 200_000
+
+
+def _ref(base: str) -> str:
+    """A branch name means its remote copy; a full commit id (benchmarks) stands for itself."""
+    return base if re.fullmatch(r"[0-9a-f]{40}", base) else f"origin/{base}"
 
 
 class GitWorkspace:
@@ -54,12 +60,12 @@ class GitWorkspace:
         return self._git("rev-parse", "HEAD")
 
     def has_work(self, base: str) -> bool:
-        return int(self._git("rev-list", "--count", f"origin/{base}..HEAD")) > 0
+        return int(self._git("rev-list", "--count", f"{_ref(base)}..HEAD")) > 0
 
     def task_commits(self, base: str) -> list[tuple[str, str, str]]:
         fmt = (f"%H%x1f%(trailers:key=Kargah-Task,valueonly,unfold)%x1f"
                f"%(trailers:key={STATE_TRAILER},valueonly,unfold)%x1e")
-        out = self._git("log", f"origin/{base}..HEAD", f"--format={fmt}", check=False)
+        out = self._git("log", f"{_ref(base)}..HEAD", f"--format={fmt}", check=False)
         rows = [r.strip("\n") for r in out.split("\x1e") if r.strip()]
         return [(a, b.strip(), c.strip()) for a, b, c in (r.split("\x1f") for r in rows)]
 
@@ -69,14 +75,14 @@ class GitWorkspace:
 
     def changed_files(self, base: str) -> list[str]:
         self._git("add", "-A")
-        return self._git("diff", "--cached", "--name-only", f"origin/{base}").splitlines()
+        return self._git("diff", "--cached", "--name-only", _ref(base)).splitlines()
 
     def base_sha(self, base: str) -> str:
-        return self._git("rev-parse", f"origin/{base}")
+        return self._git("rev-parse", _ref(base))
 
     def diff(self, base: str) -> str:
         self._git("add", "-A")
-        return self._git("diff", "--cached", f"origin/{base}")[:MAX_DIFF_CHARS]
+        return self._git("diff", "--cached", _ref(base))[:MAX_DIFF_CHARS]
 
     def read_default(self, relpath: str) -> str | None:
         if not self._default_ready():
@@ -118,7 +124,7 @@ class GitWorkspace:
     def base_variant(self, base: str, keep_paths: list[str]) -> Iterator[Path]:
         tmp = Path(tempfile.mkdtemp(prefix="kargah-proof-"))
         try:
-            self._git("worktree", "add", "-q", "--detach", str(tmp / "wt"), f"origin/{base}")
+            self._git("worktree", "add", "-q", "--detach", str(tmp / "wt"), _ref(base))
             for rel in keep_paths:
                 src = self.root / rel
                 if src.is_file():
@@ -128,3 +134,17 @@ class GitWorkspace:
         finally:
             self._git("worktree", "remove", "--force", str(tmp / "wt"), check=False)
             shutil.rmtree(tmp, ignore_errors=True)
+
+    @contextmanager
+    def worktree(self, sha: str, path: Path) -> Iterator[GitWorkspace]:
+        """A detached checkout of a commit, usable as a workspace of its own (benchmark trials); removed afterwards."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._git("worktree", "add", "-q", "--detach", str(path), sha)
+        try:
+            yield GitWorkspace(path, self._remote, "", (self._name, self._email)).using(self._env)
+        finally:
+            self._git("worktree", "remove", "--force", str(path), check=False)
+
+    def using(self, env: dict[str, str]) -> GitWorkspace:
+        self._env = env
+        return self

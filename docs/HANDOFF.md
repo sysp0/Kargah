@@ -26,7 +26,7 @@ Legacy v1 (flat modules `loop.py`, `feature.py`, `forge.py`, `cli.py`, `tui.py`,
 ## How to run
 ```bash
 cd /opt/infra/plugin/kargah
-uv run --with pytest pytest -q                       # 156 pass, 3 live skipped
+uv run --with pytest pytest -q                       # 337 pass, 4 live skipped (about 4 minutes)
 set -a; . /opt/infra/plugin/private/sandbox-bot.env; set +a
 uv run --with pytest pytest -q tests/test_tracker_contract.py   # live contract (needs `glab` login as owner)
 # one factory pass (label an issue `ready` in the sandbox first):
@@ -62,6 +62,8 @@ Plan v2 steps done (2026-11-06): **0.4** proof: the new tests must pass on the c
 ## Decisions made (owner)
 Option A (real factory) · GitLab first, tracker-agnostic ports · label-driven UX (no mention needed) · one run at a time · bot role Developer, no push to `main` · one ticket = one task for now · only the owner creates tickets (backlog: factory-created) · plan with many tasks = parent issue + one child per task, `publish` idempotent via hidden `plan-id/task-id` (NOT built yet) · `/decision` comments become project files · Codex/Claude limit = auto-continue using parsed time, else label by owner · review must never be skipped when Claude is limited · idelop group and bot-in-group: later (personal namespace for now; group project access tokens are refused by GitLab) · size/SOLID rules are for this repo only, never imposed on user projects · GitLab history is unimportant, only GitHub matters.
 
+**Phase 8 (2026-11-06):** benchmarks. `.kargah/benchmarks/<suite>/{suite.toml,tasks/*.toml}` (`adapters/bench_files.py`, validated by `kargah validate`), `domain/bench.py` (summary and recommendation: best correctness, ties within 0.05 go to the cheaper), `orchestrator/bench.py::BenchRunner` (one git worktree per trial at an exact commit, same `RunLock`, results in `<workdir>/bench/results.jsonl`), CLI `bench run SUITE --workdir DIR [--config NAME]` and `bench add-task --suite S --from-step ID --workdir DIR [--repo PATH]`. Tests with fakes only; not run live. Phases 7 and 9 wait for the owner's B2 decision.
+
 ## Open owner decision (found live, 2026-11-06)
 `/approve` cannot be the approval command on GitLab issues: GitLab treats it as an MR quick action and **drops the whole note** (no comment is stored, even with text after it). `/revise` and `/decision` are kept as text. Until the owner picks another way (label `approved`, or a plain word such as `approve`/`LGTM`), the spec gate can only be passed by re-labelling by hand. Sandbox issue #22 waits in `needs-approval` with a finished spec (MR !8).
 
@@ -81,15 +83,13 @@ Option A (real factory) · GitLab first, tracker-agnostic ports · label-driven 
 `docs/warp-review.fa.md` = PM analysis of Warp Factories and the gap table; `docs/plan-v2.fa.md` = the phased logic plan (phases 0-9), one step per Sonnet session. Phase 0 there = steps 1-2, 4-5 below. The steps below stay valid; plan-v2 orders and details them.
 
 ## Next steps (in order)
-1. After 02:24 UTC: run the factory with Codex on a fresh `ready` issue in the sandbox; confirm WIP-commit/resume with a real Codex run; record the result in `first-run.fa.md`.
-2. Run `--watch` (no `--once`) for a while on the sandbox with 2-3 tickets: check idle polling, ordering, limit wait, the lock; fix what breaks.
-3. Build `publish`: plan file `docs/plans/<date>-<name>/plan.md` (rows: id, title, Depends, acceptance test, at most 5 files, layer) to parent issue with checklist + child issues (`relates_to`), idempotent; the engine enforces `Depends`.
-4. Make interrupt effective inside long agent runs (poll the label while the agent runs; terminate and WIP-commit).
-5. Hardening: stricter proof (tell collection errors from real failures), Claude-builder sandbox, per-run caps on time/tokens, capture Codex usage.
-6. Add the invariants contract (`.kargah/invariants/`, exit 77 = skip) as in `invariants.fa.md`, run before `check`.
-7. Plugin layer: `/kargah init` (inventory per INSTALL.md), `/kargah publish`, `retro` (Matt's 7 categories) fed by `log.jsonl`.
-8. Then, not before: run on marketing-os using its real contract (`/opt/infra/plugin/private/inventory-marketing-os.md`; open unknowns: Makefile recipes, `qa-stack.sh`, `.env` provisioning); decide the bot account for the idelop group.
-9. Later (backlog): factory-created tickets, GitHub/Linear adapters, disposable runners, eval/benchmark, retire legacy modules and remove their size caps.
+1. Owner decides how a spec is approved on GitLab (see "Open owner decision"); then finish the live check "approve -> build" on sandbox issue #22.
+2. Owner decides B2 (factory-created issues, never `ready`); then phases 7 (self-improvement) and 9 (cron automation) of `docs/plan-v2.fa.md`.
+3. Run `--watch` (no `--once`) for 30 minutes on the sandbox with 2-3 tickets (plan 0.2, not done); try a live `bench run` and a live scorer (`sampling_rate` > 0) with a few cents of budget.
+4. Optional 4.7 (`DECIDE:` findings in a review) and the invariants contract (`invariants.fa.md`).
+5. `publish` (plan file to parent and child issues), then the plugin layer (`init`, `retro`).
+6. Then, not before: marketing-os with its real contract (`/opt/infra/plugin/private/inventory-marketing-os.md`).
+7. Backlog: factory-created tickets, GitHub/Linear adapters, disposable runners, retire legacy modules and their size caps.
 
 ## Working agreements for the next session
 Persian replies, simple, with a concrete scenario for any new concept; ask only when blocked; tests before claims; never print tokens; do not push history rewrites without being told; report honestly what was not verified.

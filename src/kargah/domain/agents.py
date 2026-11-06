@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from kargah.domain.bench import Suite
 from kargah.domain.config import ProjectConfig
 from kargah.domain.scoring import ScorerSpec
 
@@ -45,3 +46,4 @@ class Definition:
     agents: Mapping[str, AgentSpec]
     problems: tuple[str, ...] = field(default=())
     scorers: Mapping[str, ScorerSpec] = field(default_factory=dict)
+    suites: Mapping[str, Suite] = field(default_factory=dict)

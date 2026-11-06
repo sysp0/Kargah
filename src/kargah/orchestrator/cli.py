@@ -24,6 +24,7 @@ from kargah.adapters.jsonl_log import JsonlLog
 from kargah.adapters.shell import BashShell
 from kargah.domain.agents import Definition
 from kargah.errors import KargahError
+from kargah.orchestrator.bench import BenchRunner, add_task
 from kargah.orchestrator.engine import Engine
 from kargah.orchestrator.inbox import collect_inbox, format_row
 from kargah.orchestrator.reporting import build_report, format_report
@@ -115,6 +116,24 @@ def _show(args: argparse.Namespace) -> int:
     return 0
 
 
+def bench_command(args: argparse.Namespace) -> int:
+    try:
+        if args.bench_command == "add-task":
+            store = FsRunStore(args.workdir)
+            print(add_task(store.steps(), store.artifact, args.suite, args.from_step, args.repo))
+            return 0
+        services = build_services(args.workdir)
+        services.workspace.refresh()
+        definition = services.load_definition(services.workspace)
+        if definition.problems:
+            raise KargahError(f"config-error: {definition.problems[0]}")
+        print(BenchRunner(services, args.workdir, args.workdir / "state").run(definition, args.suite, args.config))
+    except KargahError as exc:
+        print(f"kargah: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="kargah")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -135,6 +154,17 @@ def main(argv: list[str] | None = None) -> int:
     score.add_argument("--workdir", type=Path, required=True)
     score.add_argument("--step", required=True)
     score.add_argument("--scorer", default="")
+    bench = sub.add_parser("bench", help="compare harness/model configurations on fixed tasks")
+    bench_sub = bench.add_subparsers(dest="bench_command", required=True)
+    bench_run = bench_sub.add_parser("run")
+    bench_run.add_argument("suite")
+    bench_run.add_argument("--workdir", type=Path, required=True)
+    bench_run.add_argument("--config", default="")
+    bench_add = bench_sub.add_parser("add-task", help="turn a recorded step into a benchmark task")
+    bench_add.add_argument("--suite", required=True)
+    bench_add.add_argument("--from-step", required=True)
+    bench_add.add_argument("--workdir", type=Path, required=True)
+    bench_add.add_argument("--repo", type=Path, default=Path("."), help="where .kargah/ is written (your checkout)")
     check = sub.add_parser("validate", help="check the factory definition (.kargah/) of a repository")
     check.add_argument("--repo", type=Path, default=Path("."))
     args = parser.parse_args(argv)
@@ -142,6 +172,8 @@ def main(argv: list[str] | None = None) -> int:
         return validate(args.repo)
     if args.command == "score":
         return score_command(args)
+    if args.command == "bench":
+        return bench_command(args)
     if args.command in ("report", "inbox"):
         return _show(args)
     try:

@@ -66,3 +66,7 @@
 | `/approve` ← build | همان #22 | **انجام نشد، مانع واقعی:** GitLab دستور `/approve` را خودش می‌بلعد؛ روی issue هیچ note ذخیره نمی‌شود (`note_0`) حتی با متن بعد از آن. `/revise` و `/decision` سالم می‌مانند. | – |
 
 **نتیجه‌ی مهم برای تصمیم مالک:** پیش‌فرض «و-۴» (تأیید فقط با `/approve`) روی GitLab کار نمی‌کند. طبق قاعده، این قدم را متوقف کردم و حدس نزدم؛ ticket #22 در `needs-approval` مانده است. پیشنهادهای ساده: (الف) label `approved` که مالک می‌زند (هم‌سبک بقیه‌ی UX)، (ب) کلمه‌ی ساده `approve` یا `LGTM` در ابتدای comment، (ج) هر دو. هر کدام فقط در `orchestrator/progress.py::_spec` (و متن comment bot) عوض می‌شود.
+
+## فاز ۵، ۶ و ۸ (۲۰۲۶-۱۱-۰۶)
+- `inbox` و `report` روی sandbox واقعی اجرا شدند (هفت ticket منتظر مالک را به ترتیب انتظار نشان داد؛ `report --since all` عددهای بالا را از `log.jsonl` و `steps.jsonl` ساخت: ۴ handoff، ۱ merge، هزینه‌ی review ≈ ۰٫۷۶ دلار، triage ≈ ۰٫۳۵، spec ≈ ۰٫۲۳).
+- scorerها (فاز ۶) و benchmark (فاز ۸) فقط با fake تست شده‌اند، چون اجرای live هزینه‌ی judge می‌خواهد و مالک اجازه‌ی خرج نداده بود؛ پیشنهاد: یک بار `sampling_rate = 100` برای `task-compliance` و `bench run` روی ۲ configuration و ۱ task (کمتر از یک دلار).

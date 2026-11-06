@@ -456,7 +456,7 @@ def parse_judgement(text: str, labels) -> tuple[str, str] | None:
 
 ---
 
-## فاز 8: Benchmark
+## فاز 8: Benchmark ✅ (۲۰۲۶-۱۱-۰۶: `tests/test_bench_files.py`، `tests/test_bench_run.py`، `test_workspace_diff` برای worktree و base با sha. با fake اجرا شد، live روی sandbox نه. انحراف‌ها: `Workspace.worktree(sha, path)` پورت تازه؛ `bench add-task` فایل را در `--repo` (checkout مالک، پیش‌فرض پوشه‌ی جاری) می‌نویسد نه در `<workdir>/repo` که هر `prepare` آن را پاک می‌کند؛ judge «correctness» از harness و model اولین scorer suite می‌گیرد (یا claude-haiku-5-5)؛ stepهای trial با `ticket=0` در `steps.jsonl` هم می‌آیند، پس هزینه‌شان در `report` دیده می‌شود؛ سقف مصرف builder یا judge کل benchmark را متوقف می‌کند و نتیجه‌ی ناقص نمی‌نویسد.)
 
 **8.1 فایل‌ها**
 - `.kargah/benchmarks/<suite>/suite.toml`:

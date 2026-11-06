@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import itertools
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 from kargah.domain.agents import AgentSpec, Definition
@@ -15,6 +16,13 @@ from kargah.ports.harness import HarnessRequest
 PROMPT_LIMIT, DIFF_LIMIT = 20_000, 50_000
 ASK = "Answer with `LABEL: <value>` and `REASON: <one paragraph>`."
 RETRY = f"Your answer did not follow the format. {ASK}"
+
+
+@dataclass(frozen=True)
+class Judged:
+    label: str | None             # None: the judge failed or never followed the format
+    reason: str
+    step_id: str | None           # the judge's own step record
 
 
 class Scoring:
@@ -41,31 +49,36 @@ class Scoring:
 
     def score_step(self, definition: Definition, scorer: ScorerSpec, step: StepRecord, manual: bool = False) -> bool:
         """False when the judge hit a usage limit (nothing is written, the next tick tries again)."""
+        ticket_text = self._s.runs.artifact(step.step_id, "ticket.md") or ""
+        judged = self.judge(definition, scorer, self.prompt_for(scorer, step), step.ticket, ticket_text)
+        if judged is None:
+            return False
+        self._s.scores.add(self._record(scorer, step, judged, manual))
+        return True
+
+    def judge(self, definition: Definition, scorer: ScorerSpec, prompt: str, ticket: int,
+              ticket_text: str) -> Judged | None:
+        """Ask the judge (twice at most, if its answer is malformed). None when it hit a usage limit."""
         s = self._s
-        judge = AgentSpec("judge", scorer.description, scorer.harness, scorer.model, "read", 10, 0.5, {},
+        agent = AgentSpec("judge", scorer.description, scorer.harness, scorer.model, "read", 10, 0.5, {},
                           scorer.instructions)
         sink: list[StepRecord] = []
-        recorder = RecordingHarness(s.harness_for(judge), s.runs, definition.config.prices, s.clock, s.run_id(),
-                                    step.ticket, s.workspace, definition.config.base_branch,
-                                    s.runs.artifact(step.step_id, "ticket.md") or "", itertools.count(1), sink)
-        prompt = self._prompt(scorer, step)
-        outcome: tuple[str, str] | None = None
+        recorder = RecordingHarness(s.harness_for(agent), s.runs, definition.config.prices, s.clock, s.run_id(), ticket,
+                                    s.workspace, definition.config.base_branch, ticket_text, itertools.count(1), sink)
         reason = "invalid judge output"
         with tempfile.TemporaryDirectory(prefix="kargah-judge-") as empty:      # the judge never touches the repo
             for attempt in range(2):
                 reply = recorder.run(HarnessRequest("judge", prompt, Path(empty), 600, scorer.model))
                 if reply.limited:
-                    return False
+                    return None
                 if not reply.ok:
-                    reason = f"judge failed: {reply.error}"
-                    break
+                    return Judged(None, f"judge failed: {reply.error}", sink[-1].step_id if sink else None)
                 if outcome := parse_judgement(reply.text, scorer.labels):
-                    break
+                    return Judged(outcome[0], outcome[1], sink[-1].step_id)
                 prompt = f"{prompt}\n\n{RETRY}" if attempt == 0 else prompt
-        s.scores.add(self._record(scorer, step, outcome, reason, sink, manual))
-        return True
+        return Judged(None, reason, sink[-1].step_id if sink else None)
 
-    def _prompt(self, scorer: ScorerSpec, step: StepRecord) -> str:
+    def prompt_for(self, scorer: ScorerSpec, step: StepRecord) -> str:
         art = lambda name, cap: (self._s.runs.artifact(step.step_id, name) or "")[:cap]      # noqa: E731
         labels = "\n".join(f"- `{x.value}`: {x.description}" for x in scorer.labels)
         diff = art("diff.patch", DIFF_LIMIT)
@@ -76,12 +89,9 @@ class Scoring:
             parts.append(f"## Diff\n{diff}")
         return "\n\n".join(parts + [ASK])
 
-    def _record(self, scorer: ScorerSpec, step: StepRecord, outcome: tuple[str, str] | None, reason: str,
-                judge_steps: list[StepRecord], manual: bool) -> dict:
-        label, why = outcome if outcome else (None, reason)
-        score = score_of(scorer, label) if label else None
+    def _record(self, scorer: ScorerSpec, step: StepRecord, judged: Judged, manual: bool) -> dict:
+        score = score_of(scorer, judged.label) if judged.label else None
         return {"scorer": scorer.name, "step_id": step.step_id, "run": step.run, "ticket": step.ticket,
-                "role": step.role, "label": label, "score": score,
-                "passed": score is not None and score >= scorer.passing_score, "reason": why,
-                "judge_step": judge_steps[-1].step_id if judge_steps else None,
-                "at": self._s.clock().isoformat(), "manual": manual}
+                "role": step.role, "label": judged.label, "score": score,
+                "passed": score is not None and score >= scorer.passing_score, "reason": judged.reason,
+                "judge_step": judged.step_id, "at": self._s.clock().isoformat(), "manual": manual}

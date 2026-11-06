@@ -42,3 +42,17 @@ def test_task_commits_read_the_trailers_newest_first(tmp_path):
     ws.write_file("a.txt", "3")
     third = ws.commit("plain", {})
     assert ws.task_commits("main") == [(third, "", ""), (second, "build", "incomplete"), (first, "spec", "complete")]
+
+
+def test_a_commit_id_can_be_the_base_and_a_worktree_is_a_workspace(tmp_path):
+    remote = make_remote(tmp_path)
+    ws = GitWorkspace(tmp_path / "repo", str(remote), "x", ("bot", "b@b"))
+    ws.prepare("kargah/1", "main")
+    sha = ws.base_sha("main")
+    with ws.worktree(sha, tmp_path / "trial" / "wt") as trial:
+        assert trial.root.is_dir() and trial.head() == sha and trial.base_sha(sha) == sha
+        trial.write_file("x.txt", "new")
+        assert trial.changed_files(sha) == ["x.txt"] and "+new" in trial.diff(sha)
+        with trial.base_variant(sha, ["x.txt"]) as other:
+            assert (other / "x.txt").read_text() == "new"
+    assert not (tmp_path / "trial" / "wt").exists()

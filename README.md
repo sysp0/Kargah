@@ -1,5 +1,7 @@
 # Kargah (کارگاه)
 
+> **New session? Read [docs/HANDOFF.md](docs/HANDOFF.md) first.**
+
 An open-source software factory for Claude Code, grown step by step from "devchain" (a tracker-driven plan -> build loop).
 
 - Current spec: [docs/PRD.v0.2.fa.md](docs/PRD.v0.2.fa.md) (v0.1: [docs/PRD.fa.md](docs/PRD.fa.md), superseded)

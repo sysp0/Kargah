@@ -62,10 +62,12 @@ class Endings:
             ctx.stats.commit = sha
         return sha
 
-    def _close_wip(self, ctx: Ctx, stage: Stage) -> bool:
-        """The build is done with nothing new to commit: an incomplete WIP commit becomes complete (empty commit)."""
+    def _close_wip(self, ctx: Ctx, stage: Stage, overruled: bool = False) -> bool:
+        """The build is done with nothing new to commit: an incomplete WIP commit becomes complete (empty commit).
+        A rework that rightly changes nothing because the owner overruled the review also gets a new commit, so
+        the reviewer looks again, now with the owner's comments."""
         ws = self.s.workspace
-        if ws.head_state() != "incomplete":
+        if ws.head_state() != "incomplete" and not (overruled and stage is Stage.REWORK):
             return False
         sha = ws.commit(f"feat: #{ctx.number} {ctx.ticket.title}", {"Kargah-Task": stage.value,
                         "Kargah-Issue": f"#{ctx.number}", "Kargah-State": "complete"}, allow_empty=True)

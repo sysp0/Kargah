@@ -15,7 +15,7 @@ from kargah.orchestrator.context import Ctx
 from kargah.orchestrator.feedback import already_handed_over, record_feedback, resolve_addressed
 from kargah.orchestrator.interrupt import InterruptWatch
 from kargah.orchestrator.planning import Planning
-from kargah.orchestrator.progress import latest_feedback, latest_verdict, read_progress
+from kargah.orchestrator.progress import latest_feedback, latest_verdict, owner_spoke_after_review, read_progress
 from kargah.orchestrator.services import Services
 from kargah.tasks.build import BuildTask
 from kargah.tasks.decisions import decision_files
@@ -90,7 +90,7 @@ class TicketRun(Planning):
             return self._triage(ctx, comments)
         if stage is Stage.SPEC:
             return self._spec(ctx, comments, progress.triage)
-        return self._review(ctx) if stage is Stage.REVIEW else self._build(ctx, stage, comments, progress)
+        return self._review(ctx, comments) if stage is Stage.REVIEW else self._build(ctx, stage, comments, progress)
 
     @staticmethod
     def _policy(ctx: Ctx) -> Policy:
@@ -133,7 +133,8 @@ class TicketRun(Planning):
         if result.status == "interrupted":
             return self._interrupted(ctx)
         if result.status == "done":
-            if self._save(ctx, "complete", stage) is None and not self._close_wip(ctx, stage):
+            if self._save(ctx, "complete", stage) is None and not self._close_wip(
+                    ctx, stage, owner_spoke_after_review(comments, ctx.bot_id)):
                 return self._block(ctx, "the build agent made no change; a person must decide how to go on")
             return None
         self._save(ctx, "incomplete", stage)
@@ -148,10 +149,11 @@ class TicketRun(Planning):
             return None
         return self._block(ctx, f"the build failed: {result.error}")
 
-    def _review(self, ctx: Ctx) -> str | None:
+    def _review(self, ctx: Ctx, comments: list[Comment]) -> str | None:
         s = self.s
         task = ReviewTask(ctx.harnesses["review"], ctx.agents["review"])
-        result = task.run(s.workspace, ctx.ticket, ctx.cfg.base_branch, ctx.should_stop)
+        owners = [c for c in comments if not is_bot_comment(c, ctx.bot_id)]
+        result = task.run(s.workspace, ctx.ticket, ctx.cfg.base_branch, ctx.should_stop, owners)
         if result.status == "interrupted":
             return self._interrupted(ctx)
         if result.status == "limit":

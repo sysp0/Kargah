@@ -77,6 +77,15 @@ def latest_verdict(comments: Sequence[Comment], bot_id: int, sha: str) -> Verdic
     return None
 
 
+def owner_spoke_after_review(comments: Sequence[Comment], bot_id: int) -> bool:
+    """The owner wrote something after the newest review (an answer that may overrule its must-fix items)."""
+    reviews = _review_comments(comments, bot_id)
+    if not reviews:
+        return False
+    last = max((c.created_at, c.id) for c, _ in reviews)
+    return any(not is_bot_comment(c, bot_id) and (c.created_at, c.id) > last for c in comments)
+
+
 def latest_feedback(comments: Sequence[Comment], bot_id: int) -> tuple[tuple[str, ...], tuple[str, ...]]:
     """(the owner's requested changes, the ids of the diff threads they came from) of the last feedback comment."""
     for c, m in reversed(bot_markers(comments, bot_id)):

@@ -89,3 +89,20 @@
 ## کمک Claude، self-improvement، `create_ticket` (۲۰۲۶-۱۱-۰۶)
 - `Tracker.create_ticket` روی GitLab واقعی: تست قرارداد live سبز (یک issue ساخت و بست).
 - کمک Claude به Codex و self-improvement روی sandbox اجرا **نشدند** (فقط با fake تست شده‌اند): برای اولی باید Codex واقعاً گیر کند، برای دومی scorerها نمره‌ی شکست زیاد جمع کنند.
+
+## تست live کامل روی calc (۲۰۲۶-۱۱-۰۶، جلسه ۳)
+برای این تست یک بار `.kargah/` (config با `max_fix_rounds = 0` و `max_rework = 0`، scorer ‏`task-compliance` با `sampling_rate = 100`، benchmark ‏`small`) روی main ‏sandbox گذاشتم و بعد از تست حذف کردم. مجموع هزینه‌ی step‌ها حدود **۱٫۲۱ دلار** (implement ‏۰٫۷۹، review ‏۰٫۳۱، judge ‏۰٫۱۱). هزینه‌ی Codex همیشه `unknown` است و در این عدد نیست.
+
+| بررسی | نتیجه |
+| --- | --- |
+| **benchmark** (`bench run small`، یک task ‏`power`، یک تکرار) | هر دو configuration کاملاً درست: `claude-sonnet` ‏۰٫۱۳ دلار و ۵۲ ثانیه، `codex-default` ‏۶۴ ثانیه (هزینه `unknown`)؛ پیشنهاد: `claude-sonnet`. اشکالی دیده نشد. |
+| **scorer با sampling = 100** | در tickهای بعدی هر pass حداکثر ۳ step قدیمی را نمره داد (judge ‏haiku، حدود ۰٫۰۰۵ دلار هر کدام). `scores.jsonl` و `report` پر شدند. اشکالی دیده نشد. |
+| **self-improvement** | بعد از دو نمره‌ی `partial` برای agent ‏`implement` (آستانه ۱)، کارخانه خودش issue [#33](https://gitlab.com/sysp0/kargah-sandbox/-/issues/33) را ساخت: فقط label ‏`factory-change`، بدون `ready`، با marker و رکورد claim در `log.jsonl`؛ pass بعدی تکرارش نکرد. |
+| **کمک Claude به Codex** | ticket [#34](https://gitlab.com/sysp0/kargah-sandbox/-/issues/34): Codex بعد از جواب مالک فقط `AGENTS.md` را عوض کرد و گیت proof رد کرد («no test was added»). کارخانه comment ‏`escalated` گذاشت و Claude ‏(`claude-sonnet-5-5`) با متن «you were called in to help» ادامه داد. ‏Claude یک تست اضافه کرد، review ‏(MR [!10](https://gitlab.com/sysp0/kargah-sandbox/-/merge_requests/10)) و در نهایت `needs-human`. |
+
+### اشکال‌های live (اول تست، بعد رفع؛ `tests/test_review_context.py`)
+1. **reviewer کامنت‌های مالک را نمی‌دید.** در #34 مالک نوشته بود فایل تست مجاز است، ولی review همچنان `MUST_FIX: remove the test file` داد. رفع: prompt ‏review حالا همان بلوک «The owner's comments» را دارد.
+2. **rework بدون تغییر ← blocked.** وقتی مالک یک MUST-FIX را رد کرد، builder درست چیزی را عوض نکرد و موتور `the build agent made no change` نوشت و ایستاد. رفع: اگر مالک بعد از آخرین review چیزی نوشته باشد، یک commit خالیِ `complete` ساخته می‌شود تا review دوباره (این بار با کامنت مالک) انجام شود. بدون کامنت مالک همچنان `blocked` می‌شود (تست قدیمی `test_rework_that_changes_nothing_blocks_instead_of_looping` دست نخورد).
+
+### یافته‌ی طراحی (تصمیم مالک)
+تغییر فقط-سند در **ریشه‌ی پروژه** (مثل `AGENTS.md`) معاف از تست نیست؛ فقط `.kargah/` و `docs/` معافند (`proof.exempt_paths`). در #34 Codex و Claude هر دو از این گیت گیر کردند. اگر می‌خواهید `AGENTS.md` و `README.md` هم معاف باشند، در config بنویسید `[proof] exempt_paths = [".kargah/", "docs/", "AGENTS.md", "README.md"]`.

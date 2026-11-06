@@ -45,6 +45,8 @@ Plan v2 steps done (2026-11-06): **0.4** proof: the new tests must pass on the c
 
 **1.1 (2026-11-06):** `domain/records.py::StepRecord`, `ports/runstore.py::RunStore`, `adapters/fs_runstore.py::FsRunStore` (`runs/<run>/<step>/…`, `steps.jsonl`, modes 0700/0600, `prune` by the record's `started`). Tests: `tests/test_runstore.py`.
 
+**1.2 (2026-11-06):** every harness call is a step: `orchestrator/recording.py::RecordingHarness`, `domain/pricing.py::step_cost` (reported/estimated/unknown), `Workspace.base_sha/diff`, `HarnessResult.tokens_cached`, `Harness.name`, config `[pricing."<model>"]` and `[runs] keep_days`, prune at the start of `Engine.tick`. `log.jsonl` run records now carry `kind`, `steps`, `cost_usd`, `cost_unknown_steps`. Tests: `test_pricing`, `test_recording`, `test_config_pricing`, `test_workspace_diff`, two in `test_engine`.
+
 ## Decisions made (owner)
 Option A (real factory) · GitLab first, tracker-agnostic ports · label-driven UX (no mention needed) · one run at a time · bot role Developer, no push to `main` · one ticket = one task for now · only the owner creates tickets (backlog: factory-created) · plan with many tasks = parent issue + one child per task, `publish` idempotent via hidden `plan-id/task-id` (NOT built yet) · `/decision` comments become project files · Codex/Claude limit = auto-continue using parsed time, else label by owner · review must never be skipped when Claude is limited · idelop group and bot-in-group: later (personal namespace for now; group project access tokens are refused by GitLab) · size/SOLID rules are for this repo only, never imposed on user projects · GitLab history is unimportant, only GitHub matters.
 

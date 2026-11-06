@@ -5,6 +5,7 @@ import tomllib
 from dataclasses import fields
 
 from kargah.domain.config import ProjectConfig
+from kargah.domain.pricing import ModelPrice
 from kargah.errors import KargahError
 from kargah.ports.files import FileSource
 
@@ -12,7 +13,7 @@ _MAP = {  # config.toml `section.key` -> ProjectConfig field
     "project.base_branch": "base_branch", "check.command": "check_command", "proof.command": "proof_command",
     "proof.test_paths": "proof_test_paths", "proof.fail_codes": "proof_fail_codes",
     "limits.max_fix_rounds": "max_fix_rounds",
-    "limits.max_rework": "max_rework", "limits.max_starts": "max_starts",
+    "limits.max_rework": "max_rework", "runs.keep_days": "runs_keep_days", "limits.max_starts": "max_starts",
     "limits.build_timeout_seconds": "build_timeout_seconds", "limits.review_timeout_seconds": "review_timeout_seconds",
     "models.review": "review_model", "models.build": "build_model",
 }
@@ -40,4 +41,13 @@ def parse_project_config(text: str | None) -> ProjectConfig:
             value = data[section][key]
             values[name] = tuple(value) if isinstance(value, list) else value
     assert set(values) <= known
+    values["prices"] = _prices(data.get("pricing", {}))
     return ProjectConfig(**values)  # type: ignore[arg-type]
+
+
+def _prices(table: dict) -> dict[str, ModelPrice]:
+    try:
+        return {model: ModelPrice(float(p["input"]), float(p["output"]), float(p.get("cached", p["input"])))
+                for model, p in table.items()}
+    except (KeyError, TypeError, ValueError) as exc:
+        raise KargahError(f"{CONFIG}: [pricing.\"<model>\"] needs numeric input and output ({exc})") from exc

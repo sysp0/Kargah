@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Iterator
+from datetime import timedelta
 from pathlib import Path
 
 from kargah.domain.decision import Action, Decision, decide
@@ -24,7 +25,9 @@ class Engine:
         with RunLock(self._lock_path) as lock:
             if not lock.acquired:
                 return "busy"
-            run = TicketRun(self._s)
+            s = self._s
+            s.runs.prune(s.clock() - timedelta(days=s.load_config(s.workspace).runs_keep_days))
+            run = TicketRun(s)
             for ticket, decision in self._candidates():
                 if decision.action is Action.BLOCK:
                     run.block(ticket, decision.reason)

@@ -12,6 +12,7 @@ from memory_tracker import MemoryTracker
 
 from kargah.adapters.file_sources import DefaultBranchSource
 from kargah.adapters.git_workspace import GitWorkspace
+from kargah.adapters.fs_runstore import FsRunStore
 from kargah.adapters.jsonl_log import JsonlLog
 from kargah.adapters.shell import BashShell
 from kargah.adapters.toml_config import load_project_config
@@ -81,6 +82,7 @@ class Scripted:
     """An agent that plays one scripted step per call: step(request) -> HarnessResult."""
     steps: list[Callable[[HarnessRequest], HarnessResult]]
     calls: list[HarnessRequest] = field(default_factory=list)
+    name: str = "scripted"
 
     def run(self, request: HarnessRequest) -> HarnessResult:
         self.calls.append(request)
@@ -132,6 +134,6 @@ def make_world(tmp: Path, builder_steps: list, reviewer_steps: list) -> World:
     counter = iter(range(1, 1000))
     services = Services(
         tracker=tracker, githost=host, workspace=GitWorkspace(workdir / "repo", str(remote), "x", ("bot", "b@b")),
-        builder=builder, reviewer=reviewer, shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"),
+        builder=builder, reviewer=reviewer, shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"), runs=FsRunStore(workdir),
         load_config=lambda ws: load_project_config(DefaultBranchSource(ws)), clock=clock, run_id=lambda: f"r{next(counter)}")
     return World(Engine(services, workdir / "state"), tracker, host, builder, reviewer, clock, remote, workdir)

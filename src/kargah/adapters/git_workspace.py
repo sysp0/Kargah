@@ -13,6 +13,7 @@ from pathlib import Path
 from kargah.errors import KargahError
 
 STATE_TRAILER = "Kargah-State"
+MAX_DIFF_CHARS = 200_000
 
 
 class GitWorkspace:
@@ -59,6 +60,13 @@ class GitWorkspace:
     def changed_files(self, base: str) -> list[str]:
         self._git("add", "-A")
         return self._git("diff", "--cached", "--name-only", f"origin/{base}").splitlines()
+
+    def base_sha(self, base: str) -> str:
+        return self._git("rev-parse", f"origin/{base}")
+
+    def diff(self, base: str) -> str:
+        self._git("add", "-A")
+        return self._git("diff", "--cached", f"origin/{base}")[:MAX_DIFF_CHARS]
 
     def read_default(self, relpath: str) -> str | None:
         if not self._default_ready():

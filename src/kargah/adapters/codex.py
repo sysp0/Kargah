@@ -14,6 +14,8 @@ from kargah.ports.harness import HarnessRequest, HarnessResult
 
 
 class CodexHarness:
+    name = "codex"
+
     def __init__(self, binary: str = "codex", now: Callable[[], datetime] = lambda: datetime.now(UTC)) -> None:
         self._bin, self._now = binary, now
 
@@ -31,16 +33,17 @@ class CodexHarness:
             if proc.timed_out:
                 return HarnessResult(ok=False, error=f"codex timed out after {request.timeout_seconds}s")
             text = last.read_text(encoding="utf-8") if last.is_file() else ""
-        tokens_in, tokens_out = _usage(proc.stdout)
+        tokens_in, tokens_out, tokens_cached = _usage(proc.stdout)
         if proc.returncode == 0:
-            return HarnessResult(ok=True, text=text, tokens_in=tokens_in, tokens_out=tokens_out)
+            return HarnessResult(ok=True, text=text, tokens_in=tokens_in, tokens_out=tokens_out,
+                                 tokens_cached=tokens_cached)
         said = (proc.stdout + proc.stderr)[-3000:]
         if is_limit(said):
             return HarnessResult(ok=False, limited=True, resets_at=resets_at(said, self._now()), error="usage limit")
         return HarnessResult(ok=False, error=f"codex exit {proc.returncode}: {proc.stderr.strip()[-300:]}")
 
 
-def _usage(stdout: str) -> tuple[int | None, int | None]:
+def _usage(stdout: str) -> tuple[int | None, int | None, int | None]:
     for line in reversed(stdout.splitlines()):
         try:
             event = json.loads(line)
@@ -48,5 +51,5 @@ def _usage(stdout: str) -> tuple[int | None, int | None]:
             continue
         if event.get("type") == "turn.completed" and isinstance(event.get("usage"), dict):
             u = event["usage"]
-            return u.get("input_tokens"), u.get("output_tokens")
-    return None, None
+            return u.get("input_tokens"), u.get("output_tokens"), u.get("cached_input_tokens")
+    return None, None, None

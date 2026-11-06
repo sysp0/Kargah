@@ -1,7 +1,10 @@
 """Project settings: the small contract a project gives the factory (read from .kargah/config.toml)."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+
+from kargah.domain.pricing import ModelPrice
 
 
 @dataclass(frozen=True)
@@ -18,3 +21,5 @@ class ProjectConfig:
     review_timeout_seconds: int = 600
     review_model: str = "claude-sonnet-5-5"
     build_model: str = ""         # empty: the harness default
+    prices: Mapping[str, ModelPrice] = field(default_factory=dict)    # [pricing."<model>"], USD per million tokens
+    runs_keep_days: int = 30      # step folders (prompt, reply, diff) older than this are deleted; records stay

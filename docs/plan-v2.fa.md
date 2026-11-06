@@ -118,7 +118,7 @@ class RunStore(Protocol):
   - `prune` فقط پوشه‌های `runs/` را پاک می‌کند، نه `steps.jsonl`.
 - تست‌ها (`tests/test_runstore.py`): ساختار و permها؛ رفت‌وبرگشت `steps()`؛ `artifact` برای نام ناموجود None می‌دهد؛ `prune` پوشه را پاک می‌کند ولی خط jsonl می‌ماند.
 
-**1.2 ضبط خودکار هر harness call**
+**1.2 ضبط خودکار هر harness call** ✅ (انجام شد، ۲۰۲۶-۱۱-۰۶؛ `tests/test_pricing.py`، `test_recording.py`، `test_config_pricing.py`، `test_workspace_diff.py` و دو تست engine. انحراف‌ها: شماره‌ی step و فهرست رکوردها با پارامتر `numbers`/`sink` به `RecordingHarness` داده می‌شود تا builder و reviewer یک شمارنده‌ی مشترک داشته باشند؛ خطای `OSError` در ذخیره‌ی step run را نمی‌شکند؛ Claude هم `tokens_cached` را از `cache_read_input_tokens` می‌گیرد)
 - `ports/harness.py`: فیلد `tokens_cached: int | None = None` به `HarnessResult` اضافه شود، و ویژگی `name: str` به Protocol (Codex = `"codex"`، Claude = `"claude"`).
 - `adapters/codex.py::_usage`: `cached_input_tokens` را هم بخواند.
 - `ports/workspace.py` و `adapters/git_workspace.py`: `diff(base) -> str` اضافه شود (`git add -A` و بعد `git diff --cached origin/<base>`، بریده به ۲۰۰ هزار کاراکتر)، و `base_sha(base) -> str`.

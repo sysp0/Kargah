@@ -23,6 +23,12 @@ class Workspace(Protocol):
     def changed_files(self, base: str) -> list[str]:
         """Files differing from the base, committed or not (untracked included)."""
 
+    def base_sha(self, base: str) -> str:
+        """The commit of origin/<base>."""
+
+    def diff(self, base: str) -> str:
+        """The whole change against origin/<base> as a patch (untracked files included), cut to 200 000 characters."""
+
     def read_default(self, relpath: str) -> str | None:
         """A file as it is on the remote default branch (origin/HEAD); None when missing or not cloned yet.
         The factory reads its definition only from here, never from a ticket branch an agent can edit."""

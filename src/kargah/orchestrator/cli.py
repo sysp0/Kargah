@@ -13,6 +13,7 @@ from pathlib import Path
 from kargah.adapters.claude import BUILD_TOOLS, ClaudeHarness
 from kargah.adapters.codex import CodexHarness
 from kargah.adapters.file_sources import DefaultBranchSource
+from kargah.adapters.fs_runstore import FsRunStore
 from kargah.adapters.git_workspace import GitWorkspace
 from kargah.adapters.gitlab.githost import GitLabHost
 from kargah.adapters.gitlab.http import UrllibHttp
@@ -35,7 +36,7 @@ def build_engine(workdir: Path, builder: str = "codex", build_model: str = "") -
     services = Services(
         tracker=GitLabTracker(http, project), githost=GitLabHost(http, project, url), workspace=workspace,
         builder=ClaudeHarness(tools=BUILD_TOOLS, permission_mode="acceptEdits") if builder == "claude" else CodexHarness(),
-        reviewer=ClaudeHarness(), shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"),
+        reviewer=ClaudeHarness(), shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"), runs=FsRunStore(workdir),
         load_config=lambda ws: _with_model(load_project_config(DefaultBranchSource(ws)), build_model), clock=lambda: datetime.now(UTC), run_id=lambda: uuid.uuid4().hex[:8])
     return Engine(services, workdir / "state")
 

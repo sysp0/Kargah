@@ -1,6 +1,7 @@
 """Run one ticket through build -> review -> rework until it needs a human. All state lives in git and the tracker."""
 from __future__ import annotations
 
+import itertools
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -9,12 +10,15 @@ from kargah.domain.config import ProjectConfig
 from kargah.domain.decision import Decision
 from kargah.domain.inputs import is_bot_comment
 from kargah.domain.markers import bot_comment
+from kargah.domain.records import StepRecord
 from kargah.domain.stages import Stage, next_stage
 from kargah.domain.ticket import Comment, Label, Ticket
 from kargah.orchestrator import texts
 from kargah.orchestrator.interrupt import InterruptWatch
 from kargah.orchestrator.progress import latest_verdict, read_progress
+from kargah.orchestrator.recording import RecordingHarness
 from kargah.orchestrator.services import Services
+from kargah.ports.harness import Harness
 from kargah.tasks.build import BuildTask
 from kargah.tasks.decisions import decision_files
 from kargah.tasks.review import ReviewTask
@@ -44,6 +48,9 @@ class Ctx:
     branch: str
     stats: Stats = field(default_factory=Stats)
     should_stop: Callable[[], bool] | None = None      # the owner's interrupt label, polled while an agent runs
+    steps: list[StepRecord] = field(default_factory=list)      # the agent calls of this run (see recording.py)
+    builder: Harness | None = None                     # the services' harnesses, wrapped to record every call
+    reviewer: Harness | None = None
 
     @property
     def number(self) -> int:
@@ -64,6 +71,7 @@ class TicketRun:
         s.tracker.post_comment(ctx.number, bot_comment("started", ctx.run, f"{decision.action.value}: {decision.reason}."))
         s.workspace.prepare(ctx.branch, cfg.base_branch)
         ctx.cfg = s.load_config(s.workspace)            # again after the fetch: the newest default branch
+        self._record_steps(ctx)
         outcome = self._drive(ctx)
         self._record(ctx, outcome, started)
         return outcome
@@ -94,7 +102,7 @@ class TicketRun:
         for path, content in decision_files(ctx.number, owners).items():
             ws.write_file(path, content)
         items = latest_verdict(comments, ctx.bot_id, ws.head()) if stage is Stage.REWORK else None
-        result = BuildTask(s.builder, s.shell, ctx.cfg).run(ws, ctx.ticket, owners, ctx.cfg.base_branch,
+        result = BuildTask(ctx.builder or s.builder, s.shell, ctx.cfg).run(ws, ctx.ticket, owners, ctx.cfg.base_branch,
                                                             rework_items=items.must_fix if items else (),
                                                             should_stop=ctx.should_stop)
         ctx.stats.build_rounds += 1
@@ -117,7 +125,8 @@ class TicketRun:
 
     def _review(self, ctx: Ctx) -> str | None:
         s = self.s
-        result = ReviewTask(s.reviewer, ctx.cfg).run(s.workspace, ctx.ticket, ctx.cfg.base_branch, ctx.should_stop)
+        task = ReviewTask(ctx.reviewer or s.reviewer, ctx.cfg)
+        result = task.run(s.workspace, ctx.ticket, ctx.cfg.base_branch, ctx.should_stop)
         if result.status == "interrupted":
             return self._interrupted(ctx)
         if result.status == "limit":
@@ -188,6 +197,15 @@ class TicketRun:
         ctx.stats.commit = sha or ""
         return True
 
+    def _record_steps(self, ctx: Ctx) -> None:
+        s, numbers = self.s, itertools.count(1)
+        text = f"# #{ctx.number} {ctx.ticket.title}\n\n{ctx.ticket.body}"
+
+        def wrap(inner: Harness) -> Harness:
+            return RecordingHarness(inner, s.runs, ctx.cfg.prices, s.clock, ctx.run, ctx.number, s.workspace,
+                                    ctx.cfg.base_branch, text, numbers, ctx.steps)
+        ctx.builder, ctx.reviewer = wrap(s.builder), wrap(s.reviewer)
+
     def _labels(self, number: int, add: tuple[Label, ...], remove: tuple[Label, ...]) -> None:
         for label in remove:
             self.s.tracker.remove_label(number, label)
@@ -197,8 +215,10 @@ class TicketRun:
     def _record(self, ctx: Ctx, outcome: str, started: datetime) -> None:
         now = self.s.clock()
         st = ctx.stats
+        known = [r.cost_usd for r in ctx.steps if r.cost_usd is not None]
         self.s.log.append({
-            "schema_version": 1, "ticket": ctx.number, "run": ctx.run, "outcome": outcome,
+            "kind": "run", "schema_version": 1, "steps": len(ctx.steps), "cost_usd": round(sum(known), 4),
+            "cost_unknown_steps": len(ctx.steps) - len(known), "ticket": ctx.number, "run": ctx.run, "outcome": outcome,
             "started": started.isoformat(), "seconds": round((now - started).total_seconds(), 1),
             "commit_sha": st.commit or None, "build_rounds": st.build_rounds, "check_fails": st.check_fails,
             "reviews": st.reviews, "must_fix": st.must_fix, "tokens": st.tokens, "review_cost_usd": round(st.cost_usd, 4)})

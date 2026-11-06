@@ -188,3 +188,29 @@ def test_interrupt_label_set_while_the_reviewer_runs_ends_the_run(tmp_path):
     start(w)
     assert w.engine.tick() == "interrupted"
     assert labels(w) == {"needs-info"} and w.host.ready == []
+
+
+def test_a_run_records_one_step_per_agent_call_and_a_run_record_with_costs(tmp_path):
+    w = make_world(tmp_path, [multiply_feature()], [says(PASS)])
+    start(w)
+    assert w.engine.tick() == "needs-human"
+    steps = [json.loads(line) for line in (tmp_path / "work" / "steps.jsonl").read_text().splitlines()]
+    assert [(s["step_id"], s["role"], s["status"]) for s in steps] == [("r1-01", "implement", "ok"),
+                                                                       ("r1-02", "review", "ok")]
+    folder = tmp_path / "work" / "runs" / "r1"
+    assert "multiply" in (folder / "r1-01" / "diff.patch").read_text()
+    assert "add multiply" in (folder / "r1-01" / "prompt.md").read_text()
+    assert (folder / "r1-02" / "reply.md").read_text() == PASS and not (folder / "r1-02" / "diff.patch").exists()
+    record = json.loads(w.log()[0])
+    assert (record["kind"], record["steps"], record["cost_unknown_steps"], record["cost_usd"]) == ("run", 2, 2, 0.0)
+    assert steps[0]["base_sha"] and steps[0]["head_sha"] and steps[0]["harness"] == "scripted"
+
+
+def test_old_step_folders_are_pruned_at_the_start_of_a_tick(tmp_path):
+    w = make_world(tmp_path, [multiply_feature()], [says(PASS)])
+    start(w)
+    w.engine.tick()
+    w.clock.advance(days=31)
+    assert w.engine.tick() == "idle"
+    assert not (tmp_path / "work" / "runs" / "r1").exists()
+    assert len((tmp_path / "work" / "steps.jsonl").read_text().splitlines()) == 2

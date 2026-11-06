@@ -28,8 +28,11 @@ class HarnessResult:
     cost_usd: float | None = None
     tokens_in: int | None = None
     tokens_out: int | None = None
+    tokens_cached: int | None = None
     stopped: bool = False                      # the factory stopped the agent (should_stop)
 
 
 class Harness(Protocol):
+    name: str                 # "codex" | "claude"; recorded with every step
+
     def run(self, request: HarnessRequest) -> HarnessResult: ...

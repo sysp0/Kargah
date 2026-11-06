@@ -25,8 +25,9 @@ class ClaudeHarness:
         self._tools, self._mode = tools, permission_mode
 
     def run(self, request: HarnessRequest) -> HarnessResult:
-        cmd = [self._bin, "-p", "--output-format", "json", "--allowedTools", self._tools,
-               "--max-budget-usd", str(self._budget)]
+        cmd = [self._bin, "-p", "--output-format", "json", "--allowedTools", self._tools]
+        if self._budget:
+            cmd += ["--max-budget-usd", str(self._budget)]
         if self._mode:
             cmd += ["--permission-mode", self._mode]
         if request.model:

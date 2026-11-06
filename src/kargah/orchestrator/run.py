@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import itertools
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from kargah.domain.agents import AgentSpec
 from kargah.domain.config import ProjectConfig
 from kargah.domain.decision import Decision
 from kargah.domain.inputs import is_bot_comment
@@ -49,6 +50,7 @@ class Ctx:
     stats: Stats = field(default_factory=Stats)
     should_stop: Callable[[], bool] | None = None      # the owner's interrupt label, polled while an agent runs
     steps: list[StepRecord] = field(default_factory=list)      # the agent calls of this run (see recording.py)
+    agents: Mapping[str, AgentSpec] = field(default_factory=dict)
     builder: Harness | None = None                     # the services' harnesses, wrapped to record every call
     reviewer: Harness | None = None
 
@@ -64,13 +66,16 @@ class TicketRun:
     # ---- entry points ---------------------------------------------------------------------------------------
     def process(self, ticket: Ticket, decision: Decision) -> str:
         s, started = self.s, self.s.clock()
-        cfg = s.load_config(s.workspace)
+        cfg = s.load_definition(s.workspace).config
         ctx = Ctx(ticket, s.run_id(), s.tracker.whoami().id, cfg, f"kargah/{ticket.number}",
                   should_stop=InterruptWatch(s.tracker, ticket.number))
         self._labels(ctx.number, add=(Label.IN_PROGRESS,), remove=tuple(x for x in ALL_STATES if x != Label.IN_PROGRESS))
         s.tracker.post_comment(ctx.number, bot_comment("started", ctx.run, f"{decision.action.value}: {decision.reason}."))
         s.workspace.prepare(ctx.branch, cfg.base_branch)
-        ctx.cfg = s.load_config(s.workspace)            # again after the fetch: the newest default branch
+        definition = s.load_definition(s.workspace)     # again after the fetch: the newest default branch
+        ctx.cfg, ctx.agents = definition.config, definition.agents
+        if definition.problems:
+            return self._block(ctx, f"the factory definition is invalid: {definition.problems[0]}")
         self._record_steps(ctx)
         outcome = self._drive(ctx)
         self._record(ctx, outcome, started)
@@ -102,9 +107,9 @@ class TicketRun:
         for path, content in decision_files(ctx.number, owners).items():
             ws.write_file(path, content)
         items = latest_verdict(comments, ctx.bot_id, ws.head()) if stage is Stage.REWORK else None
-        result = BuildTask(ctx.builder or s.builder, s.shell, ctx.cfg).run(ws, ctx.ticket, owners, ctx.cfg.base_branch,
-                                                            rework_items=items.must_fix if items else (),
-                                                            should_stop=ctx.should_stop)
+        task = BuildTask(ctx.builder, s.shell, ctx.cfg, ctx.agents["implement"])
+        result = task.run(ws, ctx.ticket, owners, ctx.cfg.base_branch,
+                          rework_items=items.must_fix if items else (), should_stop=ctx.should_stop)
         ctx.stats.build_rounds += 1
         ctx.stats.check_fails += result.check_fails
         ctx.stats.tokens += result.tokens
@@ -125,7 +130,7 @@ class TicketRun:
 
     def _review(self, ctx: Ctx) -> str | None:
         s = self.s
-        task = ReviewTask(ctx.reviewer or s.reviewer, ctx.cfg)
+        task = ReviewTask(ctx.reviewer, ctx.agents["review"])
         result = task.run(s.workspace, ctx.ticket, ctx.cfg.base_branch, ctx.should_stop)
         if result.status == "interrupted":
             return self._interrupted(ctx)
@@ -204,7 +209,8 @@ class TicketRun:
         def wrap(inner: Harness) -> Harness:
             return RecordingHarness(inner, s.runs, ctx.cfg.prices, s.clock, ctx.run, ctx.number, s.workspace,
                                     ctx.cfg.base_branch, text, numbers, ctx.steps)
-        ctx.builder, ctx.reviewer = wrap(s.builder), wrap(s.reviewer)
+        ctx.builder = wrap(s.harness_for(ctx.agents["implement"]))
+        ctx.reviewer = wrap(s.harness_for(ctx.agents["review"]))
 
     def _labels(self, number: int, add: tuple[Label, ...], remove: tuple[Label, ...]) -> None:
         for label in remove:

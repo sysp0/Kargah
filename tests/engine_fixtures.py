@@ -10,12 +10,12 @@ from pathlib import Path
 
 from memory_tracker import MemoryTracker
 
+from kargah.adapters.factory_files import load_definition
 from kargah.adapters.file_sources import DefaultBranchSource
-from kargah.adapters.git_workspace import GitWorkspace
 from kargah.adapters.fs_runstore import FsRunStore
+from kargah.adapters.git_workspace import GitWorkspace
 from kargah.adapters.jsonl_log import JsonlLog
 from kargah.adapters.shell import BashShell
-from kargah.adapters.toml_config import load_project_config
 from kargah.orchestrator.engine import Engine
 from kargah.orchestrator.services import Services
 from kargah.ports.harness import HarnessRequest, HarnessResult
@@ -134,6 +134,6 @@ def make_world(tmp: Path, builder_steps: list, reviewer_steps: list) -> World:
     counter = iter(range(1, 1000))
     services = Services(
         tracker=tracker, githost=host, workspace=GitWorkspace(workdir / "repo", str(remote), "x", ("bot", "b@b")),
-        builder=builder, reviewer=reviewer, shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"), runs=FsRunStore(workdir),
-        load_config=lambda ws: load_project_config(DefaultBranchSource(ws)), clock=clock, run_id=lambda: f"r{next(counter)}")
+        harness_for=lambda spec: builder if spec.role == "implement" else reviewer, shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"), runs=FsRunStore(workdir),
+        load_definition=lambda ws: load_definition(DefaultBranchSource(ws)), clock=clock, run_id=lambda: f"r{next(counter)}")
     return World(Engine(services, workdir / "state"), tracker, host, builder, reviewer, clock, remote, workdir)

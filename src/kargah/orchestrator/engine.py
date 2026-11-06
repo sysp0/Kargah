@@ -26,9 +26,10 @@ class Engine:
             if not lock.acquired:
                 return "busy"
             s = self._s
-            s.runs.prune(s.clock() - timedelta(days=s.load_config(s.workspace).runs_keep_days))
+            cfg = s.load_definition(s.workspace).config
+            s.runs.prune(s.clock() - timedelta(days=cfg.runs_keep_days))
             run = TicketRun(s)
-            for ticket, decision in self._candidates():
+            for ticket, decision in self._candidates(cfg.max_starts):
                 if decision.action is Action.BLOCK:
                     run.block(ticket, decision.reason)
                     continue
@@ -45,9 +46,8 @@ class Engine:
             if outcome in ("idle", "busy") or outcome.startswith("error"):
                 time.sleep(poll_seconds)
 
-    def _candidates(self) -> Iterator[tuple[Ticket, Decision]]:
+    def _candidates(self, max_starts: int) -> Iterator[tuple[Ticket, Decision]]:
         s = self._s
-        max_starts = s.load_config(s.workspace).max_starts
         bot_id, now = s.tracker.whoami().id, s.clock()
         for label in ORDER:
             for ticket in sorted(s.tracker.tickets_with_label(label), key=lambda t: t.number):

@@ -1,8 +1,8 @@
 """The coding agent behind a role (build, review). Codex and Claude are adapters; the factory knows neither."""
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol

@@ -156,7 +156,7 @@ def step_cost(result: HarnessResult, model: str, prices: Mapping[str, ModelPrice
 - قاعده‌ی gate در `BuildTask._problem`: اگر یکی از فایل‌های تغییرکرده زیر `.kargah/` باشد و ticket label `factory-change` نداشته باشد ← شکست با پیام `the factory definition (.kargah/) may change only in a ticket labelled factory-change`.
 - تست‌ها: (۱) builder جعلی `.kargah/config.toml` را عوض می‌کند و `max_rework` را بالا می‌برد ← gate شکست می‌خورد و سقف قدیمی اعمال می‌شود؛ (۲) همان با label `factory-change` ← قبول (بقیه‌ی gateها مثل همیشه).
 
-**2.2 فایل‌های agent و skill**
+**2.2 فایل‌های agent و skill** ✅ (انجام شد، ۲۰۲۶-۱۱-۰۶؛ `tests/test_definition.py`). انحراف‌ها: (۱) `Services.load_definition` یک `Workspace` می‌گیرد (نه `FileSource`) تا orchestrator با adapterها آشنا نشود؛ `FileSource` داخل `load_definition(source)` در `adapters/factory_files.py` است. (۲) چون `build_timeout_seconds` برای check و proof هم استفاده می‌شد، کلید تازه‌ی `check.timeout_seconds` (`ProjectConfig.check_timeout_seconds`، پیش‌فرض ۱۸۰۰) اضافه شد. (۳) نقشی که agent پیش‌فرض ندارد (`triage`، `spec`) و فایل پروژه دارد ← problem تا فاز ۴. (۴) `--builder` اگر harness را عوض کند و `--build-model` نباشد، model را خالی می‌کند.
 - نقش‌ها: `ROLES = ("triage", "spec", "implement", "review")` در `src/kargah/domain/agents.py`:
 ```python
 @dataclass(frozen=True)

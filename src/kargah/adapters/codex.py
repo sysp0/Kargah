@@ -16,13 +16,14 @@ from kargah.ports.harness import HarnessRequest, HarnessResult
 class CodexHarness:
     name = "codex"
 
-    def __init__(self, binary: str = "codex", now: Callable[[], datetime] = lambda: datetime.now(UTC)) -> None:
-        self._bin, self._now = binary, now
+    def __init__(self, binary: str = "codex", now: Callable[[], datetime] = lambda: datetime.now(UTC),
+                 sandbox: str = "workspace-write") -> None:
+        self._bin, self._now, self._sandbox = binary, now, sandbox
 
     def run(self, request: HarnessRequest) -> HarnessResult:
         with tempfile.TemporaryDirectory(prefix="kargah-codex-") as tmp:
             last = Path(tmp) / "last-message.txt"
-            cmd = [self._bin, "exec", "--sandbox", "workspace-write", "--json", "--output-last-message", str(last)]
+            cmd = [self._bin, "exec", "--sandbox", self._sandbox, "--json", "--output-last-message", str(last)]
             if request.model:
                 cmd += ["-m", request.model]
             cmd.append("-")

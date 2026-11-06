@@ -14,8 +14,7 @@ _MAP = {  # config.toml `section.key` -> ProjectConfig field
     "proof.test_paths": "proof_test_paths", "proof.fail_codes": "proof_fail_codes",
     "limits.max_fix_rounds": "max_fix_rounds",
     "limits.max_rework": "max_rework", "runs.keep_days": "runs_keep_days", "limits.max_starts": "max_starts",
-    "limits.build_timeout_seconds": "build_timeout_seconds", "limits.review_timeout_seconds": "review_timeout_seconds",
-    "models.review": "review_model", "models.build": "build_model",
+    "check.timeout_seconds": "check_timeout_seconds",
 }
 
 
@@ -51,3 +50,14 @@ def _prices(table: dict) -> dict[str, ModelPrice]:
                 for model, p in table.items()}
     except (KeyError, TypeError, ValueError) as exc:
         raise KargahError(f"{CONFIG}: [pricing.\"<model>\"] needs numeric input and output ({exc})") from exc
+
+
+def config_problems(text: str | None) -> list[str]:
+    """Keys that used to live in config.toml and moved to `.kargah/agents/<role>/agent.md`."""
+    try:
+        data = tomllib.loads(text or "")
+    except tomllib.TOMLDecodeError:
+        return []                     # parse_project_config already reports it
+    old = (["[models]"] if "models" in data else []) + [
+        f"limits.{k}" for k in ("build_timeout_seconds", "review_timeout_seconds") if k in data.get("limits", {})]
+    return [f"{k} moved to .kargah/agents/<role>/agent.md" for k in old]

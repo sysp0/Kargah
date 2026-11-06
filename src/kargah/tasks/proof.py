@@ -25,7 +25,7 @@ class Proof:
         if not tests:
             return ProofResult(False, "no test was added or changed: every change needs a test that guards it")
         command = f"{self._cfg.proof_command} {' '.join(shlex.quote(t) for t in tests)}"
-        timeout = self._cfg.build_timeout_seconds
+        timeout = self._cfg.check_timeout_seconds
         here = self._shell.run(command, self._ws.root, timeout)
         if here.returncode != 0:
             return ProofResult(False, f"the new tests do not pass with your change (exit {here.returncode}):\n"

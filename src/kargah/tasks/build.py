@@ -6,13 +6,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal
 
+from kargah.domain.agents import AgentSpec
 from kargah.domain.config import ProjectConfig
 from kargah.domain.review import parse_question
 from kargah.domain.ticket import Comment, Label, Ticket
 from kargah.ports.harness import Harness, HarnessRequest
 from kargah.ports.shell import Shell
 from kargah.ports.workspace import Workspace
-from kargah.tasks.prompting import conversation, render
+from kargah.tasks.prompting import compose, conversation, render
 from kargah.tasks.proof import Proof
 
 Status = Literal["done", "question", "limit", "failed", "interrupted"]
@@ -32,19 +33,20 @@ class BuildResult:
 
 
 class BuildTask:
-    def __init__(self, harness: Harness, shell: Shell, config: ProjectConfig) -> None:
-        self._harness, self._shell, self._cfg = harness, shell, config
+    def __init__(self, harness: Harness, shell: Shell, config: ProjectConfig, agent: AgentSpec) -> None:
+        self._harness, self._shell, self._cfg, self._agent = harness, shell, config, agent
 
     def run(self, ws: Workspace, ticket: Ticket, owner_comments: Sequence[Comment], base: str, *,
             rework_items: Sequence[str] = (), should_stop: Callable[[], bool] | None = None) -> BuildResult:
         values = dict(number=ticket.number, title=ticket.title, body=ticket.body,
                       check_command=self._cfg.check_command, conversation=conversation(owner_comments), progress="",
                       must_fix="\n".join(f"- {i}" for i in rework_items))
-        prompt = render("rework" if rework_items else "build", **values)
+        prompt = compose(self._agent, render("rework" if rework_items else "build", **values),
+                         check_command=self._cfg.check_command)
         result = BuildResult("failed")
         for _ in range(1 + self._cfg.max_fix_rounds):
-            reply = self._harness.run(HarnessRequest("build", prompt, ws.root, self._cfg.build_timeout_seconds,
-                                                     self._cfg.build_model, should_stop))
+            reply = self._harness.run(HarnessRequest("build", prompt, ws.root, self._agent.timeout_seconds,
+                                                     self._agent.model, should_stop))
             result.tokens += (reply.tokens_in or 0) + (reply.tokens_out or 0)
             if reply.stopped:
                 return BuildResult("interrupted", check_fails=result.check_fails, tokens=result.tokens)
@@ -70,7 +72,7 @@ class BuildTask:
         if touched and not may_change_definition:
             return (f"you changed the factory definition ({', '.join(touched)}); it may change only in a ticket "
                     f"labelled `{Label.FACTORY_CHANGE}`. Undo those changes.")
-        check =self._shell.run(self._cfg.check_command, ws.root, self._cfg.build_timeout_seconds)
+        check = self._shell.run(self._cfg.check_command, ws.root, self._cfg.check_timeout_seconds)
         if check.returncode != 0:
             return f"`{self._cfg.check_command}` failed:\n{check.tail}"
         if guarded:

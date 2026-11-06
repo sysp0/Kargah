@@ -80,7 +80,7 @@
 
 ## فاز 1: ثبت هر step (لایه‌ی Data)
 
-**1.1 رکورد step و ذخیره‌سازی**
+**1.1 رکورد step و ذخیره‌سازی** ✅ (انجام شد، ۲۰۲۶-۱۱-۰۶؛ `tests/test_runstore.py`؛ `prune` بر اساس `started` در رکورد کار می‌کند، نه mtime پوشه)
 - `src/kargah/domain/records.py`:
 ```python
 @dataclass(frozen=True)

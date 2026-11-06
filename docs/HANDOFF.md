@@ -43,6 +43,8 @@ Plan v2 steps done (2026-11-06): **0.4** proof: the new tests must pass on the c
 
 **0.3 (2026-11-06):** interrupt works inside a running agent. `adapters/process.py::run_stoppable` (process group, SIGTERM then SIGKILL after 10 s), `HarnessRequest.should_stop` / `HarnessResult.stopped`, `orchestrator/interrupt.py::InterruptWatch` (asks the tracker at most every 30 s), build and review both stop -> WIP commit + `needs-info`. Tests: `tests/test_process.py`, `test_harness_stop.py`, `test_interrupt_watch.py`, two engine tests in `test_engine.py`. Plan note: the reviewer is stoppable too (not only the builder).
 
+**1.1 (2026-11-06):** `domain/records.py::StepRecord`, `ports/runstore.py::RunStore`, `adapters/fs_runstore.py::FsRunStore` (`runs/<run>/<step>/…`, `steps.jsonl`, modes 0700/0600, `prune` by the record's `started`). Tests: `tests/test_runstore.py`.
+
 ## Decisions made (owner)
 Option A (real factory) · GitLab first, tracker-agnostic ports · label-driven UX (no mention needed) · one run at a time · bot role Developer, no push to `main` · one ticket = one task for now · only the owner creates tickets (backlog: factory-created) · plan with many tasks = parent issue + one child per task, `publish` idempotent via hidden `plan-id/task-id` (NOT built yet) · `/decision` comments become project files · Codex/Claude limit = auto-continue using parsed time, else label by owner · review must never be skipped when Claude is limited · idelop group and bot-in-group: later (personal namespace for now; group project access tokens are refused by GitLab) · size/SOLID rules are for this repo only, never imposed on user projects · GitLab history is unimportant, only GitHub matters.
 

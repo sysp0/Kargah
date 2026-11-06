@@ -6,7 +6,7 @@ from dataclasses import fields
 
 from kargah.domain.config import ProjectConfig
 from kargah.errors import KargahError
-from kargah.ports.workspace import Workspace
+from kargah.ports.files import FileSource
 
 _MAP = {  # config.toml `section.key` -> ProjectConfig field
     "project.base_branch": "base_branch", "check.command": "check_command", "proof.command": "proof_command",
@@ -21,8 +21,8 @@ _MAP = {  # config.toml `section.key` -> ProjectConfig field
 CONFIG = ".kargah/config.toml"
 
 
-def load_project_config(workspace: Workspace) -> ProjectConfig:
-    return parse_project_config(workspace.read_default(CONFIG))
+def load_project_config(source: FileSource) -> ProjectConfig:
+    return parse_project_config(source.read(CONFIG))
 
 
 def parse_project_config(text: str | None) -> ProjectConfig:

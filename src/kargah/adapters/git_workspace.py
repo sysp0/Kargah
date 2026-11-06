@@ -61,13 +61,24 @@ class GitWorkspace:
         return self._git("diff", "--cached", "--name-only", f"origin/{base}").splitlines()
 
     def read_default(self, relpath: str) -> str | None:
-        if not (self.root / ".git").is_dir():
+        if not self._default_ready():
             return None
-        if not self._git("rev-parse", "--verify", "-q", "origin/HEAD", check=False):
-            self._git("remote", "set-head", "origin", "--auto")
         if not self._git("ls-tree", "--name-only", "origin/HEAD", "--", relpath):
             return None
         return self._git("show", f"origin/HEAD:{relpath}")
+
+    def list_default(self, dirpath: str) -> list[str]:
+        if not self._default_ready():
+            return []
+        out = self._git("ls-tree", "-r", "--name-only", "origin/HEAD", "--", dirpath, check=False)
+        return sorted(out.splitlines())
+
+    def _default_ready(self) -> bool:
+        if not (self.root / ".git").is_dir():
+            return False
+        if not self._git("rev-parse", "--verify", "-q", "origin/HEAD", check=False):
+            self._git("remote", "set-head", "origin", "--auto")
+        return True
 
     def write_file(self, relpath: str, content: str) -> None:
         target = self.root / relpath

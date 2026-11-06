@@ -10,6 +10,7 @@ from pathlib import Path
 
 from memory_tracker import MemoryTracker
 
+from kargah.adapters.file_sources import DefaultBranchSource
 from kargah.adapters.git_workspace import GitWorkspace
 from kargah.adapters.jsonl_log import JsonlLog
 from kargah.adapters.shell import BashShell
@@ -132,5 +133,5 @@ def make_world(tmp: Path, builder_steps: list, reviewer_steps: list) -> World:
     services = Services(
         tracker=tracker, githost=host, workspace=GitWorkspace(workdir / "repo", str(remote), "x", ("bot", "b@b")),
         builder=builder, reviewer=reviewer, shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"),
-        load_config=load_project_config, clock=clock, run_id=lambda: f"r{next(counter)}")
+        load_config=lambda ws: load_project_config(DefaultBranchSource(ws)), clock=clock, run_id=lambda: f"r{next(counter)}")
     return World(Engine(services, workdir / "state"), tracker, host, builder, reviewer, clock, remote, workdir)

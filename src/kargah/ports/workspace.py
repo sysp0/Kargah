@@ -27,6 +27,9 @@ class Workspace(Protocol):
         """A file as it is on the remote default branch (origin/HEAD); None when missing or not cloned yet.
         The factory reads its definition only from here, never from a ticket branch an agent can edit."""
 
+    def list_default(self, dirpath: str) -> list[str]:
+        """All file paths under a directory on the remote default branch, sorted; [] when none."""
+
     def write_file(self, relpath: str, content: str) -> None: ...
 
     def commit(self, message: str, trailers: dict[str, str], allow_empty: bool = False) -> str | None:

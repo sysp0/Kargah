@@ -82,3 +82,10 @@
 | pass دوم، بعد از زدن `builder-claude` | #23 | بلافاصله شروع شد (comment `started`)؛ `steps.jsonl`: `role=implement`، `harness=claude`، `model=claude-sonnet-5-5`. agent یک `QUESTION` درست پرسید (تابع `multiply` از ticket #6 وجود دارد؛ انتخاب بد ticket آزمایشی از طرف من) ← `needs-info`. | ۰٫۱۰ دلار، ۲۳ ثانیه |
 
 نتیجه: قاعده کار می‌کند (شروع فوری با Claude، بدون label همان انتظار). نکته‌ی ظاهری: متن comment `started` در این حالت هنوز می‌گوید «the usage limit is over» (دلیل ثابت `decide`)؛ رفتار درست است، فقط متن دقیق نیست. ticket #23 برای بستن دستی مالک مانده است.
+
+## cron automation (live، ۲۰۲۶-۱۱-۰۶)
+فایل `.kargah/automations/live-check/automation.md` (`cron = "* * * * *"`) را موقتاً روی main ‏sandbox گذاشتم و دو pass اجرا کردم. هر pass دقیقاً یک issue ساخت: [#30](https://gitlab.com/sysp0/kargah-sandbox/-/issues/30) (slot ‏22:31) و [#31](https://gitlab.com/sysp0/kargah-sandbox/-/issues/31) (slot ‏22:32). هر دو فقط label ‏`kargah-auto` دارند (بدون `ready`)، marker ‏`automation name=live-check slot=…` در body، و هیچ agentی اجرا نشد (هزینه ۰). دو issue به این دلیل است که دو pass در دو دقیقه‌ی متفاوت بودند، نه تکرار؛ نبودن تکرار برای یک slot با تست `test_the_same_slot_is_not_created_twice_even_when_the_issue_is_closed` ثابت شده است. فایل بعد از آزمایش از main حذف و هر دو issue بسته شد.
+
+## کمک Claude، self-improvement، `create_ticket` (۲۰۲۶-۱۱-۰۶)
+- `Tracker.create_ticket` روی GitLab واقعی: تست قرارداد live سبز (یک issue ساخت و بست).
+- کمک Claude به Codex و self-improvement روی sandbox اجرا **نشدند** (فقط با fake تست شده‌اند): برای اولی باید Codex واقعاً گیر کند، برای دومی scorerها نمره‌ی شکست زیاد جمع کنند.

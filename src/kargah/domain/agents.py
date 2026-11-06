@@ -5,8 +5,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from kargah.domain.config import ProjectConfig
+from kargah.domain.scoring import ScorerSpec
 
-ROLES = ("triage", "spec", "implement", "review")      # "judge" joins with the scorers (phase 6)
+ROLES = ("triage", "spec", "implement", "review", "judge")      # judge steps are never scored
 HARNESSES = ("codex", "claude")
 ACCESS = ("read", "edit")
 SIZES = ("XS", "S", "M", "L", "XL")
@@ -43,3 +44,4 @@ class Definition:
     config: ProjectConfig
     agents: Mapping[str, AgentSpec]
     problems: tuple[str, ...] = field(default=())
+    scorers: Mapping[str, ScorerSpec] = field(default_factory=dict)

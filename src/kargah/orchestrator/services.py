@@ -10,6 +10,7 @@ from kargah.ports.githost import GitHost
 from kargah.ports.harness import Harness
 from kargah.ports.logsink import LogSink
 from kargah.ports.runstore import RunStore
+from kargah.ports.scorestore import ScoreStore
 from kargah.ports.shell import Shell
 from kargah.ports.tracker import Tracker
 from kargah.ports.workspace import Workspace
@@ -24,6 +25,7 @@ class Services:
     shell: Shell
     log: LogSink
     runs: RunStore
+    scores: ScoreStore
     bot_email: str                  # the e-mail of the bot's commits, to tell them from a person's
     load_definition: Callable[[Workspace], Definition]     # reads the default branch, never the ticket branch
     clock: Callable[[], datetime]

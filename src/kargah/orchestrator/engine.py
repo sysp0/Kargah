@@ -9,9 +9,11 @@ from pathlib import Path
 from kargah.domain.decision import Action, Decision, decide
 from kargah.domain.handoff import decide_handoff
 from kargah.domain.ticket import Label, Ticket
+from kargah.errors import KargahError
 from kargah.orchestrator.closing import Closer
 from kargah.orchestrator.lock import RunLock
 from kargah.orchestrator.run import TicketRun
+from kargah.orchestrator.scoring import Scoring
 from kargah.orchestrator.services import Services
 
 ORDER = (Label.IN_PROGRESS, Label.WAITING_REVIEW, Label.NEEDS_INFO, Label.NEEDS_APPROVAL, Label.NEEDS_HUMAN,
@@ -37,12 +39,18 @@ class Engine:
             s.runs.prune(s.clock() - timedelta(days=cfg.runs_keep_days))
             run, bot_id = TicketRun(s), s.tracker.whoami().id
             revisions = self._settle_handoffs(run, bot_id)
+            outcome = "idle"
             for ticket, decision in self._candidates(cfg.max_starts, bot_id, revisions):
                 if decision.action is Action.BLOCK:
                     run.block(ticket, decision.reason)
                     continue
-                return run.process(ticket, decision)
-            return "idle"
+                outcome = run.process(ticket, decision)
+                break
+            try:
+                Scoring(s).score_pending(definition)        # after the main work, never instead of it
+            except (KargahError, OSError):
+                pass      # shortcut: scores are derived data; a failure here must not hide the run's outcome
+            return outcome
 
     def _settle_handoffs(self, run: TicketRun, bot_id: int) -> list[tuple[Ticket, Decision]]:
         """Tickets waiting for the owner: merged -> complete, issue closed -> cancel, MR gone -> block (none of these

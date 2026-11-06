@@ -11,7 +11,6 @@ from typing import Any
 
 from kargah.errors import TrackerError
 
-
 ATTEMPTS = 3
 RETRY_CODES = (500, 502, 503, 504)
 

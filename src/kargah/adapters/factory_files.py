@@ -5,12 +5,13 @@ description). Mistakes never raise: they come back as `Definition.problems`, one
 from __future__ import annotations
 
 import re
-import tomllib
 from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 
 from kargah.adapters.file_sources import DirSource
+from kargah.adapters.frontmatter import split_frontmatter
+from kargah.adapters.scorer_files import load_scorers
 from kargah.adapters.toml_config import CONFIG, config_problems, parse_project_config
 from kargah.domain.agents import ACCESS, HARNESSES, ROLES, SIZES, AgentSpec, Definition, SkillRef
 from kargah.domain.config import ProjectConfig
@@ -20,19 +21,7 @@ from kargah.ports.files import FileSource
 AGENTS_DIR, SKILLS_DIR = ".kargah/agents", ".kargah/skills"
 DEFAULTS = DirSource(Path(__file__).resolve().parent.parent / "defaults")
 _KEYS = {"description", "harness", "model", "access", "timeout_minutes", "max_budget_usd", "models_by_size"}
-_FRONT = re.compile(r"\A\+\+\+\r?\n(.*?)^\+\+\+[ \t]*(?:\r?\n|\Z)(.*)\Z", re.S | re.M)
 _SKILL_FRONT = re.compile(r"\A---\r?\n(.*?)\r?\n---", re.S)
-
-
-def split_frontmatter(text: str) -> tuple[dict, str]:
-    """(frontmatter table, body). No `+++` block means no frontmatter. Raises KargahError on bad TOML."""
-    found = _FRONT.match(text)
-    if not found:
-        return {}, text.strip()
-    try:
-        return tomllib.loads(found[1]), found[2].strip()
-    except tomllib.TOMLDecodeError as exc:
-        raise KargahError(f"frontmatter is not valid TOML: {exc}") from exc
 
 
 def load_definition(source: FileSource) -> Definition:
@@ -49,7 +38,8 @@ def load_definition(source: FileSource) -> Definition:
               if (spec := _agent(role, source, files, shared, problems)) is not None}
     for unknown in sorted({p.split("/")[2] for p in files} - set(ROLES)):
         problems.append(f"{AGENTS_DIR}/{unknown}: unknown role (known: {', '.join(ROLES)})")
-    return Definition(config, agents, tuple(problems))
+    scorers = load_scorers(source, problems)
+    return Definition(config, agents, tuple(problems), scorers)
 
 
 def _agent(role: str, source: FileSource, files: list[str], shared: dict[str, SkillRef],

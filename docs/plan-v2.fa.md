@@ -383,7 +383,7 @@ QUESTION: <question for the owner>        (zero or more; any QUESTION stops and 
 
 ---
 
-## فاز 6: Scorerها
+## فاز 6: Scorerها ✅ (۲۰۲۶-۱۱-۰۶: `tests/test_scorers.py`، `tests/test_scoring_run.py`. انحراف‌ها: judge روی فایل `agent.md` نیست؛ از روی خود scorer یک `AgentSpec` با `access=read` و سقف ۰٫۵ دلار ساخته می‌شود؛ `ScoreStore` پورت تازه (`scores.jsonl` و فهرست runهای تمام‌شده از `log.jsonl`)؛ scoring داخل همان tick بعد از کار اصلی اجرا می‌شود، یعنی step همان run هم در همان tick نمره می‌گیرد؛ خطای scoring نتیجه‌ی run را پنهان نمی‌کند؛ مقدار پیش‌فرض `sampling_rate` هر دو scorer داخلی ۰ است. اجرای live روی sandbox انجام نشد (فقط با fake)؛ دستور دستی: `cli score --workdir DIR --step ID [--scorer NAME]`.)
 
 **6.1 فایل** `.kargah/scorers/<name>/scorer.md`:
 ```

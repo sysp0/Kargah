@@ -13,6 +13,7 @@ from memory_tracker import HUMAN, MemoryTracker
 from kargah.adapters.factory_files import load_definition
 from kargah.adapters.file_sources import DefaultBranchSource
 from kargah.adapters.fs_runstore import FsRunStore
+from kargah.adapters.fs_scores import FsScoreStore
 from kargah.adapters.git_workspace import GitWorkspace
 from kargah.adapters.jsonl_log import JsonlLog
 from kargah.adapters.shell import BashShell
@@ -188,6 +189,6 @@ def make_world(tmp: Path, builder_steps: list, reviewer_steps: list, files: dict
     counter = iter(range(1, 1000))
     services = Services(
         tracker=tracker, githost=host, workspace=GitWorkspace(workdir / "repo", str(remote), "x", ("bot", "b@b")),
-        harness_for=lambda spec: by_role.get(spec.role, planner), shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"), runs=FsRunStore(workdir), bot_email="b@b",
+        harness_for=lambda spec: by_role.get(spec.role, planner), shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"), runs=FsRunStore(workdir), scores=FsScoreStore(workdir), bot_email="b@b",
         load_definition=lambda ws: load_definition(DefaultBranchSource(ws)), clock=clock, run_id=lambda: f"r{next(counter)}")
     return World(Engine(services, workdir / "state"), tracker, host, builder, reviewer, planner, clock, remote, workdir)

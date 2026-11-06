@@ -26,3 +26,19 @@
 - «اثبات» هر خروج غیرصفر را شکست می‌شمارد (حتی نصب خراب)؛ shortcut مستند در `tasks/proof.py`.
 - فقط GitLab؛ `publish` (plan ← چند issue)، interrupt در میانه‌ی یک agent در حال اجرا (فعلاً فقط بین مراحل چک می‌شود)، و `watch` طولانی‌مدت آزموده نشده‌اند.
 - reviewer نتوانست `check.sh` را اجرا کند (sandbox) و آن را در `SHOULD` نوشت؛ درست است، ولی review بدون اجرای تست ضعیف‌تر است.
+
+---
+
+# اجرای زنده‌ی پلن v2 روی sandbox (۲۰۲۶-۱۱-۰۶)
+
+پروژه: https://gitlab.com/sysp0/kargah-sandbox (bot با نقش Developer؛ مالک با `glab`). هزینه از `steps.jsonl` و `log.jsonl` خوانده شده.
+
+## فاز ۰ و ۲: ready ← needs-human، گیت `.kargah/`، interrupt
+
+| بررسی | issue / MR | نتیجه | هزینه / زمان |
+| --- | --- | --- | --- |
+| Codex روی یک ticket کامل (همان issue قدیمیِ #6 که به limit خورده بود؛ قدم ۰.۱) | [#6](https://gitlab.com/sysp0/kargah-sandbox/-/issues/6) ← MR [!3](https://gitlab.com/sysp0/kargah-sandbox/-/merge_requests/3) | `needs-human`، ۲ step (`implement` با Codex، `review` با Claude). `steps.jsonl` و `runs/<run>/` ساخته شد | Codex: ۱۶۹٬۴۶۶ توکن ورودی (۱۴۸٬۲۲۴ cached) و ۱٬۰۵۸ خروجی، هزینه `unknown` چون قیمتی در config نیست؛ review ۰٫۱۰۷ دلار؛ ۷۹ ثانیه |
+| build که `.kargah/config.toml` را عوض می‌کند و label `factory-change` ندارد | [#12](https://gitlab.com/sysp0/kargah-sandbox/-/issues/12) | گیت کار کرد: دو بار پیام «you changed the factory definition…»؛ فایل هرگز روی branch نرسید. بعد review درست گفت «config که ticket خواسته نیست» و rework بدون تغییر ← `blocked` (رفتار درست) | ۵ step؛ review ۰٫۱۲۳ دلار؛ ۲۳۲ ثانیه |
+| interrupt وسط اجرای agent (برچسب `interrupt` ۲۲ ثانیه بعد از شروع run) | [#13](https://gitlab.com/sysp0/kargah-sandbox/-/issues/13) | agent حدود ۱۸ ثانیه بعد از گذاشتن label متوقف شد؛ status step = `stopped`؛ label ← `needs-info` (بدون WIP-commit چون هنوز فایلی عوض نشده بود) | ۱ step، ۴۰ ثانیه |
+
+اشکال زنده‌ای در این سه بررسی دیده نشد. مشاهده‌ها: (۱) هزینه‌ی Codex همیشه `unknown` است مگر مالک در `.kargah/config.toml` بخش `[pricing."<model>"]` بگذارد؛ (۲) `last-run.txt` و `log.jsonl` قدیمی هنوز کنار فایل‌های تازه هستند و مشکلی ایجاد نمی‌کنند.

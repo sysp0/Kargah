@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 
+from kargah.domain.automation import Automation
 from kargah.domain.bench import Suite
 from kargah.domain.config import ProjectConfig
 from kargah.domain.scoring import ScorerSpec
@@ -48,6 +49,7 @@ class Definition:
     problems: tuple[str, ...] = field(default=())
     scorers: Mapping[str, ScorerSpec] = field(default_factory=dict)
     suites: Mapping[str, Suite] = field(default_factory=dict)
+    automations: Mapping[str, Automation] = field(default_factory=dict)
 
 
 def claude_builder(agents: Mapping[str, AgentSpec]) -> Mapping[str, AgentSpec]:

@@ -10,6 +10,7 @@ from kargah.domain.decision import Action, Decision, decide
 from kargah.domain.handoff import decide_handoff
 from kargah.domain.ticket import Label, Ticket
 from kargah.errors import KargahError
+from kargah.orchestrator.automating import Automating
 from kargah.orchestrator.closing import Closer
 from kargah.orchestrator.improving import Improving
 from kargah.orchestrator.lock import RunLock
@@ -50,6 +51,7 @@ class Engine:
             try:
                 Scoring(s).score_pending(definition)        # after the main work, never instead of it
                 Improving(s).propose(definition)
+                Automating(s).run(definition)
             except (KargahError, OSError):
                 pass      # shortcut: scores are derived data; a failure here must not hide the run's outcome
             return outcome

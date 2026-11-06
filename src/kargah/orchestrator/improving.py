@@ -6,6 +6,7 @@ from collections import defaultdict
 from kargah.domain.agents import Definition
 from kargah.domain.improvement import Failure, due, failures, issue_text, open_roles
 from kargah.domain.ticket import Label
+from kargah.orchestrator.factory_issue import create_factory_issue
 from kargah.orchestrator.services import Services
 
 
@@ -29,7 +30,7 @@ class Improving:
                                           s.clock()):
                 continue
             title, body = issue_text(role, found)
-            number = s.tracker.create_ticket(title, body, (Label.FACTORY_CHANGE,))     # `ready` is the owner's
+            number = create_factory_issue(s.tracker, title, body, (Label.FACTORY_CHANGE,))
             s.log.append({"kind": "improvement", "issue": number, "role": role,
                           "score_keys": [[f.scorer, f.step_id] for f in found]})
             created.append(number)

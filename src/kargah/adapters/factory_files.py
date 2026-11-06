@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 
+from kargah.adapters.automation_files import load_automations
 from kargah.adapters.bench_files import load_suites
 from kargah.adapters.file_sources import DirSource
 from kargah.adapters.frontmatter import split_frontmatter
@@ -41,7 +42,8 @@ def load_definition(source: FileSource) -> Definition:
         problems.append(f"{AGENTS_DIR}/{unknown}: unknown role (known: {', '.join(ROLES)})")
     scorers = load_scorers(source, problems)
     suites = load_suites(source, set(scorers), problems)
-    return Definition(config, agents, tuple(problems), scorers, suites)
+    automations = load_automations(source, problems)
+    return Definition(config, agents, tuple(problems), scorers, suites, automations)
 
 
 def _agent(role: str, source: FileSource, files: list[str], shared: dict[str, SkillRef],

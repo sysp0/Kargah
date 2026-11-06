@@ -8,7 +8,7 @@ from typing import Literal
 
 from kargah.domain.config import ProjectConfig
 from kargah.domain.review import parse_question
-from kargah.domain.ticket import Comment, Ticket
+from kargah.domain.ticket import Comment, Label, Ticket
 from kargah.ports.harness import Harness, HarnessRequest
 from kargah.ports.shell import Shell
 from kargah.ports.workspace import Workspace
@@ -16,6 +16,7 @@ from kargah.tasks.prompting import conversation, render
 from kargah.tasks.proof import Proof
 
 Status = Literal["done", "question", "limit", "failed"]
+DEFINITION = ".kargah/"
 
 
 @dataclass
@@ -51,7 +52,8 @@ class BuildTask:
                 return BuildResult("failed", error=reply.error, check_fails=result.check_fails, tokens=result.tokens)
             if question := parse_question(reply.text):
                 return BuildResult("question", question=question, check_fails=result.check_fails, tokens=result.tokens)
-            problem = self._problem(ws, base, guarded=not rework_items)
+            problem = self._problem(ws, base, guarded=not rework_items,
+                                    may_change_definition=Label.FACTORY_CHANGE in ticket.labels)
             if problem is None:
                 return BuildResult("done", text=reply.text, check_fails=result.check_fails, tokens=result.tokens)
             result.check_fails += 1
@@ -60,8 +62,12 @@ class BuildTask:
                      f"Same rules as before; end with a short summary or a `QUESTION:` line."
         return BuildResult("failed", error=result.error, check_fails=result.check_fails, tokens=result.tokens)
 
-    def _problem(self, ws: Workspace, base: str, *, guarded: bool) -> str | None:
-        check = self._shell.run(self._cfg.check_command, ws.root, self._cfg.build_timeout_seconds)
+    def _problem(self, ws: Workspace, base: str, *, guarded: bool, may_change_definition: bool) -> str | None:
+        touched = [f for f in ws.changed_files(base) if f.startswith(DEFINITION)]
+        if touched and not may_change_definition:
+            return (f"you changed the factory definition ({', '.join(touched)}); it may change only in a ticket "
+                    f"labelled `{Label.FACTORY_CHANGE}`. Undo those changes.")
+        check =self._shell.run(self._cfg.check_command, ws.root, self._cfg.build_timeout_seconds)
         if check.returncode != 0:
             return f"`{self._cfg.check_command}` failed:\n{check.tail}"
         if guarded:

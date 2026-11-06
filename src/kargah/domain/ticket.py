@@ -14,6 +14,7 @@ class Label(StrEnum):
     WAITING_REVIEW = "waiting-review"
     BLOCKED = "blocked"
     INTERRUPT = "interrupt"
+    FACTORY_CHANGE = "factory-change"     # set by the owner: this ticket may change the factory definition
 
 
 @dataclass(frozen=True)

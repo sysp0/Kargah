@@ -71,10 +71,10 @@
 - `should_stop` را `TicketRun` می‌سازد: `lambda: Label.INTERRUPT in tracker.get_ticket(n).labels`، و حداکثر هر ۳۰ ثانیه یک بار API را صدا می‌زند (نتیجه‌ی آخر را cache کن).
 - تست‌ها: یک باینری جعلی که ۶۰ ثانیه sleep می‌کند و `should_stop` بعد از ۱ ثانیه True می‌شود. باید در کمتر از ۱۵ ثانیه با `stopped=True` برگردد. تست engine: interrupt وسط build ← commit از نوع WIP و label `needs-info`.
 
-**0.4 اثبات دقیق‌تر** (رفع shortcut در `tasks/proof.py`)
-- `ProjectConfig.proof_fail_codes: tuple[int, ...] = (1,)` و در `config.toml`: `[proof] fail_codes = [1]`.
-- قاعده: روی base فقط exit code داخل `fail_codes` یعنی «تست شکست خورد» (اثبات قبول). exit 0 یعنی «تست بدون تغییر هم پاس می‌شود» (رد). **هر کد دیگری** (مثلاً pytest 2، 3، 4، 5) یعنی «اجرای تست خراب است»، و پیام آن با پیام «تست guard نمی‌کند» فرق دارد.
-- تست‌ها: سه حالت بالا، هر کدام با پیام خودش.
+**0.4 اثبات دقیق‌تر** ✅ (انجام شد، ۲۰۲۶-۱۱-۰۶)
+- `ProjectConfig.proof_fail_codes = (1, 2)` و `[proof] fail_codes`. پیش‌فرض اولیه‌ی پلن (فقط `1`) غلط بود: تست تازه‌ای که تابع ناموجود را import می‌کند، روی base با exit 2 (collection error در pytest) شکست می‌خورد، و این شکست درست است.
+- قاعده: تست‌های تازه اول روی **head** باید پاس شوند (exit 0). روی base: exit 0 رد است (guard نمی‌کند)؛ exit داخل `fail_codes` قبول است؛ هر کد دیگری (مثلاً ۴ یا ۵) یعنی «اجرا خراب است»، با پیام جدا.
+- تست‌ها: `tests/test_proof.py`.
 
 ---
 
@@ -147,6 +147,7 @@ def step_cost(result: HarnessResult, model: str, prices: Mapping[str, ModelPrice
 ## فاز 2: definition به‌صورت کد (لایه‌ی 00)
 
 **2.1 ⚠️ خواندن definition فقط از branch پیش‌فرض** (رفع ایراد امنیتی)
+- ✅ **بخش اصلی انجام شد (۲۰۲۶-۱۱-۰۶):** `Workspace.read_default` و `load_project_config(workspace)` و gate `factory-change` (`tests/test_definition_guard.py`). **مانده:** `FileSource` با `DirSource` و `DefaultBranchSource`؛ آن را همراه 2.2 بساز.
 - ایراد امروز: `TicketRun.process` بعد از `prepare(branch)` دوباره `load_config(workspace.root)` را صدا می‌زند، یعنی config را **از branch تیکت** می‌خواند. agent می‌تواند `.kargah/config.toml` را روی branch خودش عوض کند (مثلاً `check.command = "true"`).
 - `ports/workspace.py`: `read_default(relpath) -> str | None` (`git show origin/HEAD:<relpath>`) و `list_default(dirpath) -> list[str]` (`git ls-tree -r --name-only origin/HEAD <dir>`). `prepare` باید `git remote set-head origin --auto` را یک بار اجرا کند تا `origin/HEAD` همیشه وجود داشته باشد.
 - `src/kargah/ports/files.py`: `FileSource(Protocol)` با `read(relpath)` و `list(dirpath)`. دو پیاده‌سازی در `adapters/file_sources.py`: `DirSource(root)` برای `kargah validate` روی دیسک، و `DefaultBranchSource(workspace)`.

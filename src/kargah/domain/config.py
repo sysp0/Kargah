@@ -10,6 +10,7 @@ class ProjectConfig:
     check_command: str = "scripts/check.sh"
     proof_command: str = "python3 -m pytest -q"
     proof_test_paths: tuple[str, ...] = ("tests/",)
+    proof_fail_codes: tuple[int, ...] = (1, 2)   # pytest: 1 = a test failed, 2 = collection error (missing code)
     max_fix_rounds: int = 1       # extra build rounds inside one run after a failed check or proof
     max_rework: int = 2           # review-driven rework rounds before the ticket is blocked
     max_starts: int = 5           # stopped runs recovered before the ticket is blocked

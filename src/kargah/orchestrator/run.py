@@ -54,12 +54,12 @@ class TicketRun:
     # ---- entry points ---------------------------------------------------------------------------------------
     def process(self, ticket: Ticket, decision: Decision) -> str:
         s, started = self.s, self.s.clock()
-        cfg = s.load_config(s.workspace.root)
+        cfg = s.load_config(s.workspace)
         ctx = Ctx(ticket, s.run_id(), s.tracker.whoami().id, cfg, f"kargah/{ticket.number}")
         self._labels(ctx.number, add=(Label.IN_PROGRESS,), remove=tuple(x for x in ALL_STATES if x != Label.IN_PROGRESS))
         s.tracker.post_comment(ctx.number, bot_comment("started", ctx.run, f"{decision.action.value}: {decision.reason}."))
         s.workspace.prepare(ctx.branch, cfg.base_branch)
-        ctx.cfg = s.load_config(s.workspace.root)
+        ctx.cfg = s.load_config(s.workspace)            # again after the fetch: the newest default branch
         outcome = self._drive(ctx)
         self._record(ctx, outcome, started)
         return outcome

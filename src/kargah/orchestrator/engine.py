@@ -44,7 +44,7 @@ class Engine:
 
     def _candidates(self) -> Iterator[tuple[Ticket, Decision]]:
         s = self._s
-        max_starts = s.load_config(s.workspace.root).max_starts
+        max_starts = s.load_config(s.workspace).max_starts
         bot_id, now = s.tracker.whoami().id, s.clock()
         for label in ORDER:
             for ticket in sorted(s.tracker.tickets_with_label(label), key=lambda t: t.number):

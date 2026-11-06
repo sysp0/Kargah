@@ -25,9 +25,17 @@ class Proof:
         if not tests:
             return ProofResult(False, "no test was added or changed: every change needs a test that guards it")
         command = f"{self._cfg.proof_command} {' '.join(shlex.quote(t) for t in tests)}"
-        # shortcut: any non-zero exit counts as "fails on base" (also a broken setup); upgrade: tell them apart
+        timeout = self._cfg.build_timeout_seconds
+        here = self._shell.run(command, self._ws.root, timeout)
+        if here.returncode != 0:
+            return ProofResult(False, f"the new tests do not pass with your change (exit {here.returncode}):\n"
+                                      f"{here.tail}")
         with self._ws.base_variant(base, tests) as checkout:
-            result = self._shell.run(command, checkout, self._cfg.build_timeout_seconds)
+            result = self._shell.run(command, checkout, timeout)
         if result.returncode == 0:
             return ProofResult(False, "the new tests pass without your change, so they do not guard it")
+        if result.returncode not in self._cfg.proof_fail_codes:
+            # a crash, a usage error or "no tests collected" says nothing about the change
+            return ProofResult(False, f"the new tests could not run on the base commit (exit {result.returncode}); "
+                                      f"they must fail there by assertion or missing code:\n{result.tail}")
         return ProofResult(True)

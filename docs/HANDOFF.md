@@ -37,6 +37,7 @@ Outcomes printed: `needs-human | question | limit | limit-unknown | blocked | in
 
 ## What is done (verified)
 Label state machine; engine with run lock and crash recovery from tracker+git; build (test first, check, **proof = new tests must fail on base**), independent review, rework (max 2), WIP draft commits (`Kargah-State: incomplete`) on limit/question/interrupt, auto-resume time read from the agent's own message, `/decision` files, `log.jsonl`, GitLab issue+MR adapter, bot-loop guard, token isolation. Live: Codex limit parsed correctly (issue #6 waits until 02:24 UTC 2026-11-06); full cycle with Claude builder reached `needs-human` (issue #8, MR !2). Details and bugs found: `first-run.fa.md`.
+Plan v2 steps done (2026-11-06): **0.4** proof: the new tests must pass on the change and fail on base with an exit code in `proof.fail_codes` (default `[1, 2]`; another code = broken run, rejected) (`tests/test_proof.py`). **2.1** (part): `.kargah/config.toml` is read only from `origin/HEAD` via `Workspace.read_default`, never from the ticket branch; a build that changes `.kargah/` fails its gate unless the ticket has label `factory-change` (`tests/test_definition_guard.py`). Not done from 2.1: the `FileSource` abstraction (comes with 2.2).
 
 ## Decisions made (owner)
 Option A (real factory) · GitLab first, tracker-agnostic ports · label-driven UX (no mention needed) · one run at a time · bot role Developer, no push to `main` · one ticket = one task for now · only the owner creates tickets (backlog: factory-created) · plan with many tasks = parent issue + one child per task, `publish` idempotent via hidden `plan-id/task-id` (NOT built yet) · `/decision` comments become project files · Codex/Claude limit = auto-continue using parsed time, else label by owner · review must never be skipped when Claude is limited · idelop group and bot-in-group: later (personal namespace for now; group project access tokens are refused by GitLab) · size/SOLID rules are for this repo only, never imposed on user projects · GitLab history is unimportant, only GitHub matters.
@@ -47,7 +48,7 @@ Option A (real factory) · GitLab first, tracker-agnostic ports · label-driven 
 3. Interrupt only checked between steps, not inside a running agent.
 4. `watch` mode (long-running loop) untested; only `--once` run live.
 5. Claude-as-builder runs with a tool allowlist, no hard sandbox: review before using on real projects.
-6. Proof treats any non-zero exit as "fails on base" (shortcut in `tasks/proof.py`).
+6. Resume after a question blocks when the builder has nothing new to change ("the build agent made no change"), even if the owner said "go on as is": the WIP commit stays `incomplete`. Fix idea: when the build is done and nothing changed but HEAD is `incomplete`, make an empty commit with `Kargah-State: complete`.
 7. Reviewer cannot run `check.sh` in its sandbox; the engine runs it, but reviews are read-only judgments.
 8. Per-run cost recorded minimally (`log.jsonl` has tokens and review cost; Codex cost not captured).
 9. Sandbox leftovers: issue #6 (limit evidence), #7 (blocked, draft MR !1), #8 (needs-human, MR !2); stale probe bot user in the sandbox. Delete freely.

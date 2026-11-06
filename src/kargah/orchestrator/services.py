@@ -4,7 +4,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 
 from kargah.domain.config import ProjectConfig
 from kargah.ports.githost import GitHost
@@ -24,6 +23,6 @@ class Services:
     reviewer: Harness
     shell: Shell
     log: LogSink
-    load_config: Callable[[Path], ProjectConfig]
+    load_config: Callable[[Workspace], ProjectConfig]      # reads the default branch, never the ticket branch
     clock: Callable[[], datetime]
     run_id: Callable[[], str]

@@ -35,7 +35,7 @@ def build_engine(workdir: Path, builder: str = "codex", build_model: str = "") -
         tracker=GitLabTracker(http, project), githost=GitLabHost(http, project, url), workspace=workspace,
         builder=ClaudeHarness(tools=BUILD_TOOLS, permission_mode="acceptEdits") if builder == "claude" else CodexHarness(),
         reviewer=ClaudeHarness(), shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"),
-        load_config=lambda root: _with_model(load_project_config(root), build_model), clock=lambda: datetime.now(UTC), run_id=lambda: uuid.uuid4().hex[:8])
+        load_config=lambda ws: _with_model(load_project_config(ws), build_model), clock=lambda: datetime.now(UTC), run_id=lambda: uuid.uuid4().hex[:8])
     return Engine(services, workdir / "state")
 
 

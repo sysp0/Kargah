@@ -27,6 +27,9 @@ class IssueWriter(Protocol):
 
     def close_ticket(self, number: int) -> None: ...
 
+    def create_ticket(self, title: str, body: str, labels: tuple[str, ...]) -> int:
+        """A new open issue with exactly these labels; returns its number."""
+
 
 class Tracker(IssueReader, IssueWriter, Protocol):
     """Reader and writer together."""

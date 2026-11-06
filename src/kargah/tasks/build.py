@@ -69,14 +69,15 @@ class BuildTask:
         return BuildResult("failed", error=result.error, check_fails=result.check_fails, tokens=result.tokens)
 
     def _problem(self, ws: Workspace, base: str, *, guarded: bool, may_change_definition: bool) -> str | None:
-        touched = [f for f in ws.changed_files(base) if f.startswith(DEFINITION)]
+        changed = ws.changed_files(base)
+        touched = [f for f in changed if f.startswith(DEFINITION)]
         if touched and not may_change_definition:
             return (f"you changed the factory definition ({', '.join(touched)}); it may change only in a ticket "
                     f"labelled `{Label.FACTORY_CHANGE}`. Undo those changes.")
         check = self._shell.run(self._cfg.check_command, ws.root, self._cfg.check_timeout_seconds)
         if check.returncode != 0:
             return f"`{self._cfg.check_command}` failed:\n{check.tail}"
-        if guarded:
+        if guarded and not (changed and all(f.startswith(self._cfg.proof_exempt_paths) for f in changed)):
             proof = Proof(ws, self._shell, self._cfg).check(base)
             if not proof.ok:
                 return f"proof failed: {proof.reason}"

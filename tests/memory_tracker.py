@@ -35,6 +35,9 @@ class MemoryTracker:
     def close_ticket(self, number: int) -> None:
         self._tickets[number] = replace(self._tickets[number], open=False)
 
+    def create_ticket(self, title: str, body: str, labels: tuple[str, ...]) -> int:
+        return self.open_ticket(title, body, labels)
+
     def get_ticket(self, number: int) -> Ticket:
         return self._tickets[number]
 

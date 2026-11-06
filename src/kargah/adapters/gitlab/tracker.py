@@ -40,6 +40,11 @@ class GitLabTracker:
     def remove_label(self, number: int, label: str) -> None:
         self._http.request("PUT", f"{self._base}/issues/{number}", json={"remove_labels": label})
 
+    def create_ticket(self, title: str, body: str, labels: tuple[str, ...]) -> int:
+        row = self._http.request("POST", f"{self._base}/issues",
+                                 json={"title": title, "description": body, "labels": ",".join(labels)})
+        return int(row["iid"])
+
     def close_ticket(self, number: int) -> None:
         self._http.request("PUT", f"{self._base}/issues/{number}", json={"state_event": "close"})
 

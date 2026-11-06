@@ -17,5 +17,9 @@ class FsScoreStore:
     def add(self, record: dict[str, Any]) -> None:
         JsonlLog(self._scores).append(record)
 
+    def claimed(self) -> set[tuple[str, str]]:
+        return {(scorer, step) for r in read_jsonl(self._log) if r.get("kind") == "improvement"
+                for scorer, step in r.get("score_keys", [])}
+
     def finished_runs(self) -> set[str]:
         return {r["run"] for r in read_jsonl(self._log) if r.get("kind", "run") == "run" and "run" in r}

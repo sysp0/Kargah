@@ -54,3 +54,9 @@ def test_labels_and_comment_use_the_right_calls(base):
 def test_whoami_reads_the_token_owner():
     http = FakeHttp({("GET", "user"): {"id": 9, "username": "bot"}})
     assert GitLabTracker(http, "g/p").whoami().id == 9
+
+
+def test_create_ticket_sends_title_body_and_only_the_given_labels(base):
+    http = FakeHttp({("POST", f"{base}/issues"): {"iid": 31}})
+    assert GitLabTracker(http, "g/p").create_ticket("t", "b", ("factory-change", "kargah-auto")) == 31
+    assert http.calls[0][3] == {"title": "t", "description": "b", "labels": "factory-change,kargah-auto"}

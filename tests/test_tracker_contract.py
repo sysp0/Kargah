@@ -91,3 +91,14 @@ def test_a_human_reply_after_the_bot_is_input(env: Env):
     env.human_says("created_at")
     [answer] = human_input(env.tracker.comments(env.ticket), bot.id)
     assert answer.body == "created_at" and answer.author.id != bot.id
+
+
+def test_a_created_ticket_has_exactly_the_given_labels_and_can_be_found_by_label(env: Env):
+    number = env.tracker.create_ticket("contract: created (auto-closed)", "body <!-- kargah:improvement role=x -->",
+                                       ("factory-change",))
+    try:
+        ticket = env.tracker.get_ticket(number)
+        assert ticket.labels == {"factory-change"} and "kargah:improvement role=x" in ticket.body and ticket.open
+        assert number in [t.number for t in env.tracker.tickets_with_label("factory-change")]
+    finally:
+        env.tracker.close_ticket(number)

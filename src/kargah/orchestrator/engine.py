@@ -11,6 +11,7 @@ from kargah.domain.handoff import decide_handoff
 from kargah.domain.ticket import Label, Ticket
 from kargah.errors import KargahError
 from kargah.orchestrator.closing import Closer
+from kargah.orchestrator.improving import Improving
 from kargah.orchestrator.lock import RunLock
 from kargah.orchestrator.run import TicketRun
 from kargah.orchestrator.scoring import Scoring
@@ -48,6 +49,7 @@ class Engine:
                 break
             try:
                 Scoring(s).score_pending(definition)        # after the main work, never instead of it
+                Improving(s).propose(definition)
             except (KargahError, OSError):
                 pass      # shortcut: scores are derived data; a failure here must not hide the run's outcome
             return outcome

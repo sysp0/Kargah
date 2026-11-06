@@ -10,5 +10,8 @@ class ScoreStore(Protocol):
 
     def add(self, record: dict[str, Any]) -> None: ...
 
+    def claimed(self) -> set[tuple[str, str]]:
+        """(scorer, step) pairs already named in an improvement issue."""
+
     def finished_runs(self) -> set[str]:
         """Ids of the runs that have ended (their run record exists)."""

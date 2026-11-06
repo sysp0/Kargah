@@ -22,4 +22,8 @@ class ProjectConfig:
     spec_min_size: str = "L"
     check_timeout_seconds: int = 1800     # one run of the check or of the proof command
     prices: Mapping[str, ModelPrice] = field(default_factory=dict)    # [pricing."<model>"], USD per million tokens
+    proof_exempt_paths: tuple[str, ...] = (".kargah/", "docs/")     # a change only under these needs no new test
+    self_improvement: bool = False           # [self_improvement] enabled: open issues about failing agents
+    improvement_failed_threshold: int = 5    # failed scores of one role that make an issue
+    improvement_max_age_days: int = 7        # or: the oldest unclaimed failure is this old
     runs_keep_days: int = 30      # step folders (prompt, reply, diff) older than this are deleted; records stay

@@ -1,6 +1,6 @@
 import json
 
-from engine_fixtures import MULTIPLY_CODE, MULTIPLY_TEST, git, make_world, multiply_feature, says, writes
+from engine_fixtures import EXPORT, MULTIPLY_CODE, MULTIPLY_TEST, git, make_world, multiply_feature, says, writes
 
 from kargah.ports.harness import HarnessResult
 
@@ -143,3 +143,15 @@ def test_rework_that_changes_nothing_blocks_instead_of_looping(tmp_path):
     start(w)
     assert w.engine.tick() == "blocked"
     assert len(w.builder.calls) == 2
+
+
+def test_resume_after_a_question_with_no_new_change_completes_the_wip_commit(tmp_path):
+    ask = writes({"tests/test_multiply.py": MULTIPLY_TEST, "src/calc/ops.py": MULTIPLY_CODE,
+                  "src/calc/__init__.py": EXPORT}, text="QUESTION: ints or floats?")
+    w = make_world(tmp_path, [ask, says("nothing to change, go on as is")], [says(PASS)])
+    n = start(w)
+    assert w.engine.tick() == "question"
+    w.tracker.human_says(n, "go on as is")
+    assert w.engine.tick() == "needs-human"
+    state = git(w.remote, "log", "-1", "--format=%(trailers:key=Kargah-State,valueonly)", "kargah/1")
+    assert state == "complete"

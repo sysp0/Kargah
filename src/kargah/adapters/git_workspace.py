@@ -74,12 +74,12 @@ class GitWorkspace:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
 
-    def commit(self, message: str, trailers: dict[str, str]) -> str | None:
+    def commit(self, message: str, trailers: dict[str, str], allow_empty: bool = False) -> str | None:
         self._git("add", "-A")
-        if not self._git("status", "--porcelain"):
+        if not allow_empty and not self._git("status", "--porcelain"):
             return None
         body = message + "\n\n" + "\n".join(f"{k}: {v}" for k, v in trailers.items())
-        self._git("commit", "-q", "-m", body)
+        self._git("commit", "-q", *(["--allow-empty"] if allow_empty else []), "-m", body)
         return self.head()
 
     def push(self, branch: str) -> None:

@@ -29,8 +29,8 @@ class Workspace(Protocol):
 
     def write_file(self, relpath: str, content: str) -> None: ...
 
-    def commit(self, message: str, trailers: dict[str, str]) -> str | None:
-        """Commit everything; None when nothing changed."""
+    def commit(self, message: str, trailers: dict[str, str], allow_empty: bool = False) -> str | None:
+        """Commit everything; None when nothing changed (unless allow_empty)."""
 
     def push(self, branch: str) -> None: ...
 

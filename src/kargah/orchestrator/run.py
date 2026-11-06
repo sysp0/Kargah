@@ -96,7 +96,7 @@ class TicketRun:
         ctx.stats.check_fails += result.check_fails
         ctx.stats.tokens += result.tokens
         if result.status == "done":
-            if self._save(ctx, "complete", stage) is None:     # no new commit would repeat the same step forever
+            if self._save(ctx, "complete", stage) is None and not self._close_wip(ctx, stage):
                 return self._block(ctx, "the build agent made no change; a person must decide how to go on")
             return None
         self._save(ctx, "incomplete", stage)
@@ -167,6 +167,17 @@ class TicketRun:
             self.s.githost.ensure_draft_mr(ctx.branch, ctx.cfg.base_branch, title, f"Closes #{ctx.number}")
             ctx.stats.commit = sha
         return sha
+
+    def _close_wip(self, ctx: Ctx, stage: Stage) -> bool:
+        """The build is done with nothing new to commit: an incomplete WIP commit becomes complete (empty commit)."""
+        ws = self.s.workspace
+        if ws.head_state() != "incomplete":
+            return False
+        sha = ws.commit(f"feat: #{ctx.number} {ctx.ticket.title}", {"Kargah-Task": stage.value,
+                        "Kargah-Issue": f"#{ctx.number}", "Kargah-State": "complete"}, allow_empty=True)
+        ws.push(ctx.branch)
+        ctx.stats.commit = sha or ""
+        return True
 
     def _labels(self, number: int, add: tuple[Label, ...], remove: tuple[Label, ...]) -> None:
         for label in remove:

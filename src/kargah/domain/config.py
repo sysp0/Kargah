@@ -16,6 +16,7 @@ class ProjectConfig:
     proof_fail_codes: tuple[int, ...] = (1, 2)   # pytest: 1 = a test failed, 2 = collection error (missing code)
     max_fix_rounds: int = 2       # extra build rounds inside one run after a failed check or proof
     max_rework: int = 3           # review-driven rework rounds before the ticket is blocked
+    max_claude_helps: int = 3     # times Claude may take over a stuck Codex builder on one ticket
     max_starts: int = 5           # stopped runs recovered before the ticket is blocked
     triage_policy: str = "auto"   # [stages] triage: auto (when the body has no acceptance section) | always | never
     spec_policy: str = "auto"     # [stages] spec: auto (size >= spec_min_size or an ambiguity) | always | never

@@ -1,4 +1,4 @@
-"""When Codex is stuck, Claude gets exactly one extra round before the ticket is blocked (hard stop: a marker)."""
+"""When Codex is stuck, Claude gets one extra round per stuck episode, at most `max_claude_helps` times per ticket."""
 from engine_fixtures import SEED, make_world, multiply_feature, says, writes
 from test_engine import MUST_FIX, PASS, labels
 
@@ -20,7 +20,7 @@ def escalations(world, n=1):
 
 
 def test_the_default_caps_are_loose():
-    assert (ProjectConfig().max_fix_rounds, ProjectConfig().max_rework) == (2, 3)
+    assert (ProjectConfig().max_fix_rounds, ProjectConfig().max_rework, ProjectConfig().max_claude_helps) == (2, 3, 3)
 
 
 def test_one_more_rework_round_is_allowed_after_an_escalation():
@@ -69,3 +69,27 @@ def test_no_escalation_when_claude_already_builds_the_ticket(tmp_path):
     w.tracker.open_ticket("add multiply", "add multiply(a, b)", ("ready", "builder-claude"))
     assert w.engine.tick() == "blocked"
     assert len(w.builder.calls) == 2 and escalations(w) == 0
+
+
+def stuck_twice(tmp_path, files=TIGHT):
+    """Cycle 1: Codex is stuck, Claude fixes it. Cycle 2 (/revise): Codex is stuck again."""
+    w = make_world(tmp_path, [multiply_feature(), edit(1), edit(2), edit(3), edit(4), edit(5)],
+                   [says(MUST_FIX), says(MUST_FIX), says(PASS), says(MUST_FIX), says(MUST_FIX), says(PASS)], files)
+    n = w.tracker.open_ticket("add multiply", "add multiply(a, b)", ("ready",))
+    assert w.engine.tick() == "needs-human" and escalations(w) == 1
+    w.tracker.human_says(n, "/revise support floats too")
+    return w
+
+
+def test_after_a_revise_codex_builds_again_and_claude_may_help_a_second_time(tmp_path):
+    w = stuck_twice(tmp_path)
+    assert w.engine.tick() == "needs-human"
+    models = [c.model for c in w.builder.calls]
+    assert models == ["", "", CLAUDE, "", "", CLAUDE] and escalations(w) == 2
+
+
+def test_the_help_stops_after_max_claude_helps(tmp_path):
+    capped = {".kargah/config.toml": TIGHT[".kargah/config.toml"] + "max_claude_helps = 1\n"}
+    w = stuck_twice(tmp_path, capped)
+    assert w.engine.tick() == "blocked"
+    assert [c.model for c in w.builder.calls] == ["", "", CLAUDE, "", ""] and escalations(w) == 1

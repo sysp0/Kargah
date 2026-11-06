@@ -54,7 +54,8 @@ class Progress:
     triage: TriageReport | None = None
     spec: SpecView | None = None
     has_build: bool | None = None            # None: same as has_work (a build or rework commit exists otherwise)
-    escalated: bool = False                  # Claude was called in once to help a stuck Codex builder (hard stop)
+    escalated: bool = False                  # Claude was called in during the current cycle (since the last /revise)
+    helps: int = 0                           # how many times Claude was called in on this ticket (hard stop)
 
 
 def spec_needed(p: Progress, policy: Policy) -> bool:

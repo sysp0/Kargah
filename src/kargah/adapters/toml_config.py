@@ -16,7 +16,8 @@ _MAP = {  # config.toml `section.key` -> ProjectConfig field
     "self_improvement.enabled": "self_improvement", "self_improvement.failed_threshold": "improvement_failed_threshold",
     "self_improvement.max_age_days": "improvement_max_age_days", "proof.fail_codes": "proof_fail_codes",
     "limits.max_fix_rounds": "max_fix_rounds",
-    "limits.max_rework": "max_rework", "runs.keep_days": "runs_keep_days", "limits.max_starts": "max_starts",
+    "limits.max_rework": "max_rework", "limits.max_claude_helps": "max_claude_helps",
+    "runs.keep_days": "runs_keep_days", "limits.max_starts": "max_starts",
     "check.timeout_seconds": "check_timeout_seconds", "stages.triage": "triage_policy", "stages.spec": "spec_policy",
     "stages.spec_min_size": "spec_min_size",
 }

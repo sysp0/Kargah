@@ -42,7 +42,13 @@ def read_progress(ws: Workspace, comments: Sequence[Comment], bot_id: int, base:
         markers[feedback_at][1].attrs.get("sha") if feedback_at >= 0 else None, feedback_at >= 0 and not since, since,
         _triage(markers), _spec(comments, markers, bot_id, Label.APPROVED in labels),
         any(task in ("build", "rework") for _, task, _ in ws.task_commits(base)),
-        any(m.kind == "escalated" for _, m in markers))
+        *_escalations(markers, feedback_at))
+
+
+def _escalations(markers: list[tuple[Comment, Marker]], feedback_at: int) -> tuple[bool, int]:
+    """(Claude was called in since the last change request, how many times in all)."""
+    at = [i for i, (_, m) in enumerate(markers) if m.kind == "escalated"]
+    return bool(at) and at[-1] > feedback_at, len(at)
 
 
 def _triage(markers: list[tuple[Comment, Marker]]) -> TriageReport | None:

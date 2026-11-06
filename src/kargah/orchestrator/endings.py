@@ -88,8 +88,9 @@ class Endings:
 
     @staticmethod
     def _can_escalate(ctx: Ctx, progress: Progress) -> bool:
-        """Claude helps once per ticket, and only when a different builder is at work now."""
-        return not progress.escalated and ctx.agents["implement"].harness != "claude"
+        """Claude helps once per stuck episode and at most max_claude_helps times; only when another builder works."""
+        return (not progress.escalated and progress.helps < ctx.cfg.max_claude_helps
+                and ctx.agents["implement"].harness != "claude")
 
     def _escalate(self, ctx: Ctx, reason: str) -> None:
         self.s.tracker.post_comment(ctx.number, bot_comment("escalated", ctx.run, texts.escalated(reason)))

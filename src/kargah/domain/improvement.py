@@ -53,6 +53,7 @@ def issue_text(role: str, found: Sequence[Failure]) -> tuple[str, str]:
         f"The scorers graded {len(found)} steps of the `{role}` agent as failed.", "", "## Counts", *lines, "",
         f"## Failures (at most {MAX_LISTED})", *listed, "",
         "## What to do",
-        "Change only files under `.kargah/` (agent.md, skills). For each change, name the failures it addresses. "
+        "Change only files under `.kargah/` (agents, skills, scorers). For each change, name the failures it "
+        "addresses. "
         "One change per failure pattern.", "", f"<!-- kargah:improvement role={role} -->"])
     return f"Factory: improve the {role} agent ({len(found)} failed scores)", body

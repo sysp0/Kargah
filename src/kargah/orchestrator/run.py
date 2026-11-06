@@ -1,6 +1,7 @@
 """Run one ticket through build -> review -> rework until it needs a human. All state lives in git and the tracker."""
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -11,6 +12,7 @@ from kargah.domain.markers import bot_comment
 from kargah.domain.stages import Stage, next_stage
 from kargah.domain.ticket import Comment, Label, Ticket
 from kargah.orchestrator import texts
+from kargah.orchestrator.interrupt import InterruptWatch
 from kargah.orchestrator.progress import latest_verdict, read_progress
 from kargah.orchestrator.services import Services
 from kargah.tasks.build import BuildTask
@@ -41,6 +43,7 @@ class Ctx:
     cfg: ProjectConfig
     branch: str
     stats: Stats = field(default_factory=Stats)
+    should_stop: Callable[[], bool] | None = None      # the owner's interrupt label, polled while an agent runs
 
     @property
     def number(self) -> int:
@@ -55,7 +58,8 @@ class TicketRun:
     def process(self, ticket: Ticket, decision: Decision) -> str:
         s, started = self.s, self.s.clock()
         cfg = s.load_config(s.workspace)
-        ctx = Ctx(ticket, s.run_id(), s.tracker.whoami().id, cfg, f"kargah/{ticket.number}")
+        ctx = Ctx(ticket, s.run_id(), s.tracker.whoami().id, cfg, f"kargah/{ticket.number}",
+                  should_stop=InterruptWatch(s.tracker, ticket.number))
         self._labels(ctx.number, add=(Label.IN_PROGRESS,), remove=tuple(x for x in ALL_STATES if x != Label.IN_PROGRESS))
         s.tracker.post_comment(ctx.number, bot_comment("started", ctx.run, f"{decision.action.value}: {decision.reason}."))
         s.workspace.prepare(ctx.branch, cfg.base_branch)
@@ -91,10 +95,13 @@ class TicketRun:
             ws.write_file(path, content)
         items = latest_verdict(comments, ctx.bot_id, ws.head()) if stage is Stage.REWORK else None
         result = BuildTask(s.builder, s.shell, ctx.cfg).run(ws, ctx.ticket, owners, ctx.cfg.base_branch,
-                                                            rework_items=items.must_fix if items else ())
+                                                            rework_items=items.must_fix if items else (),
+                                                            should_stop=ctx.should_stop)
         ctx.stats.build_rounds += 1
         ctx.stats.check_fails += result.check_fails
         ctx.stats.tokens += result.tokens
+        if result.status == "interrupted":
+            return self._interrupted(ctx)
         if result.status == "done":
             if self._save(ctx, "complete", stage) is None and not self._close_wip(ctx, stage):
                 return self._block(ctx, "the build agent made no change; a person must decide how to go on")
@@ -110,7 +117,9 @@ class TicketRun:
 
     def _review(self, ctx: Ctx) -> str | None:
         s = self.s
-        result = ReviewTask(s.reviewer, ctx.cfg).run(s.workspace, ctx.ticket, ctx.cfg.base_branch)
+        result = ReviewTask(s.reviewer, ctx.cfg).run(s.workspace, ctx.ticket, ctx.cfg.base_branch, ctx.should_stop)
+        if result.status == "interrupted":
+            return self._interrupted(ctx)
         if result.status == "limit":
             return self._limited(ctx, result.resets_at, "The reviewer", Label.WAITING_REVIEW)
         if result.status != "ok" or result.verdict is None:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
@@ -14,6 +15,7 @@ class HarnessRequest:
     cwd: Path
     timeout_seconds: int
     model: str = ""
+    should_stop: Callable[[], bool] | None = None   # polled while the agent runs; True = stop it now
 
 
 @dataclass(frozen=True)
@@ -26,6 +28,7 @@ class HarnessResult:
     cost_usd: float | None = None
     tokens_in: int | None = None
     tokens_out: int | None = None
+    stopped: bool = False                      # the factory stopped the agent (should_stop)
 
 
 class Harness(Protocol):

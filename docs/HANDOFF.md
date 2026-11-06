@@ -41,13 +41,15 @@ Plan v2 steps done (2026-11-06): **0.4** proof: the new tests must pass on the c
 
 **Item 6 (2026-11-06):** when the build is done, nothing changed and HEAD is `Kargah-State: incomplete`, the engine makes an empty commit with `Kargah-State: complete` (`Workspace.commit(allow_empty=True)`, `TicketRun._close_wip`); test `test_resume_after_a_question_with_no_new_change_completes_the_wip_commit`.
 
+**0.3 (2026-11-06):** interrupt works inside a running agent. `adapters/process.py::run_stoppable` (process group, SIGTERM then SIGKILL after 10 s), `HarnessRequest.should_stop` / `HarnessResult.stopped`, `orchestrator/interrupt.py::InterruptWatch` (asks the tracker at most every 30 s), build and review both stop -> WIP commit + `needs-info`. Tests: `tests/test_process.py`, `test_harness_stop.py`, `test_interrupt_watch.py`, two engine tests in `test_engine.py`. Plan note: the reviewer is stoppable too (not only the builder).
+
 ## Decisions made (owner)
 Option A (real factory) · GitLab first, tracker-agnostic ports · label-driven UX (no mention needed) · one run at a time · bot role Developer, no push to `main` · one ticket = one task for now · only the owner creates tickets (backlog: factory-created) · plan with many tasks = parent issue + one child per task, `publish` idempotent via hidden `plan-id/task-id` (NOT built yet) · `/decision` comments become project files · Codex/Claude limit = auto-continue using parsed time, else label by owner · review must never be skipped when Claude is limited · idelop group and bot-in-group: later (personal namespace for now; group project access tokens are refused by GitLab) · size/SOLID rules are for this repo only, never imposed on user projects · GitLab history is unimportant, only GitHub matters.
 
 ## Not done / known risks
 1. Codex as builder on a full ticket not yet run (limited until 02:24 UTC); only its limit path is proven.
 2. `publish` (plan file to parent+child issues), `blocks`-style dependencies (GitLab `blocks` needs a paid plan; the engine must enforce `Depends:` itself), plugin (`init`, inventory, `retro`, `/rate`) not built. `INSTALL.md` is a draft.
-3. Interrupt only checked between steps, not inside a running agent.
+3. ~~Interrupt only checked between steps~~ fixed by 0.3.
 4. `watch` mode (long-running loop) untested; only `--once` run live.
 5. Claude-as-builder runs with a tool allowlist, no hard sandbox: review before using on real projects.
 6. ~~Resume after a question blocks when the builder changes nothing~~ fixed (see "What is done").

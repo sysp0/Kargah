@@ -155,3 +155,36 @@ def test_resume_after_a_question_with_no_new_change_completes_the_wip_commit(tmp
     assert w.engine.tick() == "needs-human"
     state = git(w.remote, "log", "-1", "--format=%(trailers:key=Kargah-State,valueonly)", "kargah/1")
     assert state == "complete"
+
+
+def test_interrupt_label_set_while_the_agent_runs_stops_it_and_saves_a_wip_commit(tmp_path):
+    holder = {}
+
+    def long_running(request):
+        multiply_feature()(request)
+        holder["w"].tracker.add_label(1, "interrupt")      # the owner reacts while the agent works
+        assert request.should_stop()
+        return HarnessResult(ok=False, stopped=True)
+
+    w = make_world(tmp_path, [long_running], [])
+    holder["w"] = w
+    start(w)
+    assert w.engine.tick() == "interrupted"
+    assert labels(w) == {"needs-info"}
+    assert "Kargah-State: incomplete" in w.remote_log("kargah/1")
+    assert w.reviewer.calls == []
+
+
+def test_interrupt_label_set_while_the_reviewer_runs_ends_the_run(tmp_path):
+    holder = {}
+
+    def reviewing(request):
+        holder["w"].tracker.add_label(1, "interrupt")
+        assert request.should_stop()
+        return HarnessResult(ok=False, stopped=True)
+
+    w = make_world(tmp_path, [multiply_feature()], [reviewing])
+    holder["w"] = w
+    start(w)
+    assert w.engine.tick() == "interrupted"
+    assert labels(w) == {"needs-info"} and w.host.ready == []

@@ -1,6 +1,7 @@
 """Review task: a separate agent reads the diff cold and answers in a fixed format."""
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -14,7 +15,7 @@ from kargah.tasks.prompting import render
 
 @dataclass
 class ReviewResult:
-    status: str                      # "ok" | "limit" | "failed"
+    status: str                      # "ok" | "limit" | "failed" | "interrupted"
     verdict: Verdict | None = None
     text: str = ""
     error: str = ""
@@ -26,10 +27,13 @@ class ReviewTask:
     def __init__(self, harness: Harness, config: ProjectConfig) -> None:
         self._harness, self._cfg = harness, config
 
-    def run(self, ws: Workspace, ticket: Ticket, base: str) -> ReviewResult:
+    def run(self, ws: Workspace, ticket: Ticket, base: str,
+            should_stop: Callable[[], bool] | None = None) -> ReviewResult:
         prompt = render("review", number=ticket.number, title=ticket.title, body=ticket.body, base=base)
         reply = self._harness.run(HarnessRequest("review", prompt, ws.root, self._cfg.review_timeout_seconds,
-                                                 self._cfg.review_model))
+                                                 self._cfg.review_model, should_stop))
+        if reply.stopped:
+            return ReviewResult("interrupted")
         if reply.limited:
             return ReviewResult("limit", resets_at=reply.resets_at)
         if not reply.ok:

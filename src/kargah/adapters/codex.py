@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import tempfile
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -10,6 +9,7 @@ from pathlib import Path
 
 from kargah.adapters.env import clean_env
 from kargah.adapters.limits import is_limit, resets_at
+from kargah.adapters.process import run_stoppable
 from kargah.ports.harness import HarnessRequest, HarnessResult
 
 
@@ -24,10 +24,11 @@ class CodexHarness:
             if request.model:
                 cmd += ["-m", request.model]
             cmd.append("-")
-            try:
-                proc = subprocess.run(cmd, cwd=request.cwd, input=request.prompt, env=clean_env(), text=True,
-                                      capture_output=True, timeout=request.timeout_seconds, check=False)
-            except subprocess.TimeoutExpired:
+            proc = run_stoppable(cmd, request.cwd, request.prompt, clean_env(), request.timeout_seconds,
+                                 request.should_stop)
+            if proc.stopped:
+                return HarnessResult(ok=False, stopped=True, error="stopped by the factory")
+            if proc.timed_out:
                 return HarnessResult(ok=False, error=f"codex timed out after {request.timeout_seconds}s")
             text = last.read_text(encoding="utf-8") if last.is_file() else ""
         tokens_in, tokens_out = _usage(proc.stdout)

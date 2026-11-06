@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from collections.abc import Callable
 from datetime import UTC, datetime
 
 from kargah.adapters.env import clean_env
 from kargah.adapters.limits import is_limit, resets_at
+from kargah.adapters.process import run_stoppable
 from kargah.ports.harness import HarnessRequest, HarnessResult
 
 READ_ONLY_TOOLS = "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git status:*)"
@@ -29,10 +29,11 @@ class ClaudeHarness:
             cmd += ["--permission-mode", self._mode]
         if request.model:
             cmd += ["--model", request.model]
-        try:
-            proc = subprocess.run(cmd, cwd=request.cwd, input=request.prompt, env=clean_env(["ANTHROPIC_API_KEY"]),
-                                  text=True, capture_output=True, timeout=request.timeout_seconds, check=False)
-        except subprocess.TimeoutExpired:
+        proc = run_stoppable(cmd, request.cwd, request.prompt, clean_env(["ANTHROPIC_API_KEY"]),
+                             request.timeout_seconds, request.should_stop)
+        if proc.stopped:
+            return HarnessResult(ok=False, stopped=True, error="stopped by the factory")
+        if proc.timed_out:
             return HarnessResult(ok=False, error=f"claude timed out after {request.timeout_seconds}s")
         try:
             result = json.loads(proc.stdout)

@@ -1,7 +1,7 @@
 """Build task (implement and rework): the agent works, then the check and the proof must pass."""
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal
@@ -15,7 +15,7 @@ from kargah.ports.workspace import Workspace
 from kargah.tasks.prompting import conversation, render
 from kargah.tasks.proof import Proof
 
-Status = Literal["done", "question", "limit", "failed"]
+Status = Literal["done", "question", "limit", "failed", "interrupted"]
 DEFINITION = ".kargah/"
 
 
@@ -36,15 +36,18 @@ class BuildTask:
         self._harness, self._shell, self._cfg = harness, shell, config
 
     def run(self, ws: Workspace, ticket: Ticket, owner_comments: Sequence[Comment], base: str, *,
-            rework_items: Sequence[str] = ()) -> BuildResult:
-        values = dict(number=ticket.number, title=ticket.title, body=ticket.body, check_command=self._cfg.check_command,
-                      conversation=conversation(owner_comments), progress="", must_fix="\n".join(f"- {i}" for i in rework_items))
+            rework_items: Sequence[str] = (), should_stop: Callable[[], bool] | None = None) -> BuildResult:
+        values = dict(number=ticket.number, title=ticket.title, body=ticket.body,
+                      check_command=self._cfg.check_command, conversation=conversation(owner_comments), progress="",
+                      must_fix="\n".join(f"- {i}" for i in rework_items))
         prompt = render("rework" if rework_items else "build", **values)
         result = BuildResult("failed")
         for _ in range(1 + self._cfg.max_fix_rounds):
             reply = self._harness.run(HarnessRequest("build", prompt, ws.root, self._cfg.build_timeout_seconds,
-                                                     self._cfg.build_model))
+                                                     self._cfg.build_model, should_stop))
             result.tokens += (reply.tokens_in or 0) + (reply.tokens_out or 0)
+            if reply.stopped:
+                return BuildResult("interrupted", check_fails=result.check_fails, tokens=result.tokens)
             if reply.limited:
                 return BuildResult("limit", resets_at=reply.resets_at, check_fails=result.check_fails,
                                    tokens=result.tokens)

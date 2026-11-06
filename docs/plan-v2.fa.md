@@ -63,7 +63,7 @@
 
 **0.2 حالت `--watch`** روی ۲ یا ۳ تیکت، حداقل ۳۰ دقیقه. بررسی: poll در حالت idle، ترتیب، انتظار برای limit، قفل. هر ایراد = یک تست + رفع.
 
-**0.3 ⚠️ interrupt وسط اجرای agent**
+**0.3 ⚠️ interrupt وسط اجرای agent** ✅ (انجام شد، ۲۰۲۶-۱۱-۰۶؛ `should_stop` را `InterruptWatch` می‌سازد → `orchestrator/interrupt.py`؛ review هم قابل توقف است)
 - فایل تازه: `src/kargah/adapters/process.py` با `run_stoppable(cmd, cwd, input, env, timeout_s, should_stop, poll_s=15) -> ProcResult(returncode, stdout, stderr, stopped, timed_out)`. با `subprocess.Popen` کار می‌کند؛ هر `poll_s` ثانیه `should_stop()` را صدا می‌زند. اگر True شد: `terminate()`، تا ۱۰ ثانیه صبر، بعد `kill()`.
 - `ports/harness.py`: `HarnessRequest.should_stop: Callable[[], bool] | None = None` و `HarnessResult.stopped: bool = False`.
 - `adapters/codex.py` و `adapters/claude.py` از `run_stoppable` استفاده کنند (کد تکراری timeout حذف می‌شود).

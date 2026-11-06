@@ -99,15 +99,13 @@ GitLab swallows a `/approve` comment on issues, so the owner approves a spec by 
 6. **No per-ticket or per-day cost cap for now** (not a real need). Per-call cap exists: the implement agent defaults to `max_budget_usd = 2.0` (a Claude builder had none after 2.2; fixed).
 
 ## Next steps (in order)
-1. Label `builder-claude` (decision 3): domain rule in `decide()` (ignore a pending limit marker for this ticket), implement agent override to Claude for this ticket, tests, then a live check on the sandbox (put the label on a ticket while Codex is limited).
-2. Escalation to Claude when Codex is stuck (decision 5): design first with the owner in two sentences (suggested: after `max_fix_rounds` or `max_rework` is used up with a Codex builder, one more round runs with Claude before `blocked`; and loosen the defaults a little, for example `max_fix_rounds` 2 and `max_rework` 3). Keep a hard stop so nothing loops. Test first.
-3. Phase 7 (self-improvement) of `docs/plan-v2.fa.md`, with decision 1: issues carry `factory-change`, never `ready`.
-4. Phase 9 (cron automation), same rule.
-5. Live checks not done yet: `--watch` for 30 minutes with 2-3 tickets (plan 0.2); a scorer with `sampling_rate` > 0; `bench run` with 2 configurations on 1 task (under 1 USD in total).
-6. Optional: 4.7 (`DECIDE:` findings in a review), invariants contract, `publish`, plugin layer, then marketing-os (see the older list in git history of this file if needed).
+Steps 1-4 of session 2's list (builder-claude, Claude helps a stuck Codex, phase 7, phase 9) are done in session 3 (see "What is done").
+1. Live checks not done yet (cost money, owner has not approved spending): `--watch` for 30 minutes with 2-3 tickets (plan 0.2); a scorer with `sampling_rate` > 0 (also feeds phase 7); `bench run` with 2 configurations on 1 task (under 1 USD); a real escalation (Codex stuck, then Claude).
+2. Owner decisions open: may an improvement issue change the `review` agent or the scorers? Is one escalation per ticket (forever, also after a later `/revise`) right?
+3. Optional: 4.7 (`DECIDE:` findings in a review), invariants contract, `publish`, plugin layer, then marketing-os.
 
 ## Not done (honest list)
-Phase 7, phase 9, plan 0.2 (`--watch` run), live runs of scorers and benchmark (fakes only), 4.7, `builder-claude`, Claude help for a stuck Codex, per-ticket cost cap (deliberately skipped). Codex cost is always `unknown` unless `[pricing."<model>"]` is in the project config.
+Plan 0.2 (`--watch` run), live runs of scorers, benchmark, self-improvement and the Claude help (fakes only), 4.7, per-ticket cost cap (deliberately skipped). Codex cost is always `unknown` unless `[pricing."<model>"]` is in the project config.
 
 ## Sandbox leftovers (sysp0/kargah-sandbox; delete freely)
 Open: #7 (blocked), #12 (blocked), #13 (needs-info), #8 / MR !2, #20 / MR !6, #21 / MR !7 (needs-human), #22 / MR !8 (needs-info; its branch contains an old `.kargah/config.toml`, so the definition gate objects: close it or rebase by hand). Closed: #6 (merged, MR !3), #18, #19 (cancelled, MR !5).

@@ -82,14 +82,27 @@ GitLab swallows a `/approve` comment on issues, so the owner approves a spec by 
 ## Plan v2 (2026-11-06, Warp Factories review)
 `docs/warp-review.fa.md` = PM analysis of Warp Factories and the gap table; `docs/plan-v2.fa.md` = the phased logic plan (phases 0-9), one step per Sonnet session. Phase 0 there = steps 1-2, 4-5 below. The steps below stay valid; plan-v2 orders and details them.
 
+## Decisions made in session 2 (owner, 2026-11-06; implement these, do not ask again)
+1. **B2 = yes, option A:** the factory may create issues itself (self-improvement, scheduled work), but **never** labels them `ready`. The owner activates them. The owner may add rules later. Proposal not yet confirmed: an improvement issue may not change the `review` agent or the scorers unless the owner says so.
+2. **Spec approval** = label `approved` (done and merged).
+3. **Per-ticket Claude builder:** label `builder-claude` on a ticket. For that ticket only: the implement agent is Claude (model claude-sonnet-5-5) and a pending Codex usage-limit wait is ignored, so it starts at once. Other tickets keep waiting for Codex. The label lives on the ticket, so it survives restarts. (Not built yet.) A global `--builder` flag stays as it is (it does not bypass a pending limit wait; it only changes who runs).
+4. **Claude also limited:** nothing may wait forever: unknown reset time -> `blocked` (already so); known reset time -> wait with the usual counters (`max_starts` etc.).
+5. **Limits are only a brake against excess, keep them loose.** The real need: when Codex gets stuck and cannot fix the problem (gates keep failing, reviewer must-fix survives the rework rounds), **Claude comes in to help** and fixes it quickly instead of the ticket just going `blocked`. Review should be able to settle quick fixes fast. (Not built yet; see next steps.)
+6. **No per-ticket or per-day cost cap for now** (not a real need). Per-call cap exists: the implement agent defaults to `max_budget_usd = 2.0` (a Claude builder had none after 2.2; fixed).
+
 ## Next steps (in order)
-1. (done) spec approval by label `approved`.
-2. Owner decides B2 (factory-created issues, never `ready`); then phases 7 (self-improvement) and 9 (cron automation) of `docs/plan-v2.fa.md`.
-3. Run `--watch` (no `--once`) for 30 minutes on the sandbox with 2-3 tickets (plan 0.2, not done); try a live `bench run` and a live scorer (`sampling_rate` > 0) with a few cents of budget.
-4. Optional 4.7 (`DECIDE:` findings in a review) and the invariants contract (`invariants.fa.md`).
-5. `publish` (plan file to parent and child issues), then the plugin layer (`init`, `retro`).
-6. Then, not before: marketing-os with its real contract (`/opt/infra/plugin/private/inventory-marketing-os.md`).
-7. Backlog: factory-created tickets, GitHub/Linear adapters, disposable runners, retire legacy modules and their size caps.
+1. Label `builder-claude` (decision 3): domain rule in `decide()` (ignore a pending limit marker for this ticket), implement agent override to Claude for this ticket, tests, then a live check on the sandbox (put the label on a ticket while Codex is limited).
+2. Escalation to Claude when Codex is stuck (decision 5): design first with the owner in two sentences (suggested: after `max_fix_rounds` or `max_rework` is used up with a Codex builder, one more round runs with Claude before `blocked`; and loosen the defaults a little, for example `max_fix_rounds` 2 and `max_rework` 3). Keep a hard stop so nothing loops. Test first.
+3. Phase 7 (self-improvement) of `docs/plan-v2.fa.md`, with decision 1: issues carry `factory-change`, never `ready`.
+4. Phase 9 (cron automation), same rule.
+5. Live checks not done yet: `--watch` for 30 minutes with 2-3 tickets (plan 0.2); a scorer with `sampling_rate` > 0; `bench run` with 2 configurations on 1 task (under 1 USD in total).
+6. Optional: 4.7 (`DECIDE:` findings in a review), invariants contract, `publish`, plugin layer, then marketing-os (see the older list in git history of this file if needed).
+
+## Not done (honest list)
+Phase 7, phase 9, plan 0.2 (`--watch` run), live runs of scorers and benchmark (fakes only), 4.7, `builder-claude`, Claude help for a stuck Codex, per-ticket cost cap (deliberately skipped). Codex cost is always `unknown` unless `[pricing."<model>"]` is in the project config.
+
+## Sandbox leftovers (sysp0/kargah-sandbox; delete freely)
+Open: #7 (blocked), #12 (blocked), #13 (needs-info), #8 / MR !2, #20 / MR !6, #21 / MR !7 (needs-human), #22 / MR !8 (needs-info; its branch contains an old `.kargah/config.toml`, so the definition gate objects: close it or rebase by hand). Closed: #6 (merged, MR !3), #18, #19 (cancelled, MR !5).
 
 ## Working agreements for the next session
 Persian replies, simple, with a concrete scenario for any new concept; ask only when blocked; tests before claims; never print tokens; do not push history rewrites without being told; report honestly what was not verified.

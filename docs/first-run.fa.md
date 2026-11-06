@@ -70,3 +70,6 @@
 ## فاز ۵، ۶ و ۸ (۲۰۲۶-۱۱-۰۶)
 - `inbox` و `report` روی sandbox واقعی اجرا شدند (هفت ticket منتظر مالک را به ترتیب انتظار نشان داد؛ `report --since all` عددهای بالا را از `log.jsonl` و `steps.jsonl` ساخت: ۴ handoff، ۱ merge، هزینه‌ی review ≈ ۰٫۷۶ دلار، triage ≈ ۰٫۳۵، spec ≈ ۰٫۲۳).
 - scorerها (فاز ۶) و benchmark (فاز ۸) فقط با fake تست شده‌اند، چون اجرای live هزینه‌ی judge می‌خواهد و مالک اجازه‌ی خرج نداده بود؛ پیشنهاد: یک بار `sampling_rate = 100` برای `task-compliance` و `bench run` روی ۲ configuration و ۱ task (کمتر از یک دلار).
+
+## تأیید spec با label `approved` (live، ۲۰۲۶-۱۱-۰۶)
+مالک label `approved` را روی [#22](https://gitlab.com/sysp0/kargah-sandbox/-/issues/22) زد؛ pass بعدی بدون هیچ comment تازه‌ای از `needs-approval` به build رفت (دو step `implement`، حدود ۰٫۲۵ دلار). build یک `QUESTION` پرسید، نه به‌خاطر اشکال کارخانه: branch `kargah/22` وقتی ساخته شد که فایل موقت `.kargah/config.toml` (برای تست spec) روی main بود؛ بعد از حذف آن از main، diff نسبت به main حذف `.kargah/` را نشان می‌دهد و گیت 2.1 درست جلویش را می‌گیرد. اثر جانبی تست خودم است؛ ticket برای بستن یا rebase دستی مالک مانده است.

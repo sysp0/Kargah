@@ -73,3 +73,12 @@
 
 ## تأیید spec با label `approved` (live، ۲۰۲۶-۱۱-۰۶)
 مالک label `approved` را روی [#22](https://gitlab.com/sysp0/kargah-sandbox/-/issues/22) زد؛ pass بعدی بدون هیچ comment تازه‌ای از `needs-approval` به build رفت (دو step `implement`، حدود ۰٫۲۵ دلار). build یک `QUESTION` پرسید، نه به‌خاطر اشکال کارخانه: branch `kargah/22` وقتی ساخته شد که فایل موقت `.kargah/config.toml` (برای تست spec) روی main بود؛ بعد از حذف آن از main، diff نسبت به main حذف `.kargah/` را نشان می‌دهد و گیت 2.1 درست جلویش را می‌گیرد. اثر جانبی تست خودم است؛ ticket برای بستن یا rebase دستی مالک مانده است.
+
+## label `builder-claude` (live، ۲۰۲۶-۱۱-۰۶)
+| بررسی | issue | نتیجه | هزینه |
+| --- | --- | --- | --- |
+| ticket با limit در انتظارِ Codex | [#23](https://gitlab.com/sysp0/kargah-sandbox/-/issues/23) | **شبیه‌سازی‌شده:** Codex در لحظه‌ی آزمایش limit نداشت (جواب عادی داد)، پس همان comment `limit` را که موتور می‌نویسد (`resume_at` سه ساعت بعد، `by=codex`) با token ربات گذاشتم و ticket را `in-progress` نگه داشتم. | – |
+| pass اول، **بدون** label (شاهد) | #23 | خروجی `idle`: ticket منتظر ماند. | ۰ |
+| pass دوم، بعد از زدن `builder-claude` | #23 | بلافاصله شروع شد (comment `started`)؛ `steps.jsonl`: `role=implement`، `harness=claude`، `model=claude-sonnet-5-5`. agent یک `QUESTION` درست پرسید (تابع `multiply` از ticket #6 وجود دارد؛ انتخاب بد ticket آزمایشی از طرف من) ← `needs-info`. | ۰٫۱۰ دلار، ۲۳ ثانیه |
+
+نتیجه: قاعده کار می‌کند (شروع فوری با Claude، بدون label همان انتظار). نکته‌ی ظاهری: متن comment `started` در این حالت هنوز می‌گوید «the usage limit is over» (دلیل ثابت `decide`)؛ رفتار درست است، فقط متن دقیق نیست. ticket #23 برای بستن دستی مالک مانده است.

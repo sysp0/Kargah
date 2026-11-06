@@ -54,7 +54,7 @@ class Planning(Endings):
             self._labels(ctx.number, add=(Label.NEEDS_INFO,), remove=(Label.IN_PROGRESS,))
             return "question"
         if status == "limit":
-            return self._limited(ctx, resets_at, f"The {who} agent", Label.IN_PROGRESS)
+            return self._limited(ctx, resets_at, f"The {who} agent", Label.IN_PROGRESS, who)
         if status == "interrupted":
             return self._interrupted(ctx)
         return self._block(ctx, f"the {who} agent failed: {error}")

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from kargah.domain.bench import Suite
 from kargah.domain.config import ProjectConfig
@@ -12,6 +12,7 @@ ROLES = ("triage", "spec", "implement", "review", "judge")      # judge steps ar
 HARNESSES = ("codex", "claude")
 ACCESS = ("read", "edit")
 SIZES = ("XS", "S", "M", "L", "XL")
+CLAUDE_BUILDER_MODEL = "claude-sonnet-5-5"
 
 
 @dataclass(frozen=True)
@@ -47,3 +48,12 @@ class Definition:
     problems: tuple[str, ...] = field(default=())
     scorers: Mapping[str, ScorerSpec] = field(default_factory=dict)
     suites: Mapping[str, Suite] = field(default_factory=dict)
+
+
+def claude_builder(agents: Mapping[str, AgentSpec]) -> Mapping[str, AgentSpec]:
+    """The agents of a ticket labelled `builder-claude`: only the implement agent changes (the size router is off,
+    its models belong to the other harness)."""
+    if "implement" not in agents:
+        return agents
+    return {**agents, "implement": replace(agents["implement"], harness="claude", model=CLAUDE_BUILDER_MODEL,
+                                           models_by_size={})}

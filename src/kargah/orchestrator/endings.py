@@ -19,14 +19,15 @@ class Endings:
     def __init__(self, services: Services) -> None:
         self.s = services
 
-    def _limited(self, ctx: Ctx, resets_at: datetime | None, who: str, keep: Label) -> str:
+    def _limited(self, ctx: Ctx, resets_at: datetime | None, who: str, keep: Label, role: str) -> str:
         s = self.s
         if resets_at is None:
             s.tracker.post_comment(ctx.number, bot_comment("blocked", ctx.run, texts.limit(None, who)))
             self._labels(ctx.number, add=(Label.BLOCKED,), remove=(Label.IN_PROGRESS, Label.WAITING_REVIEW))
             return "limit-unknown"
         stamp = resets_at.isoformat()
-        s.tracker.post_comment(ctx.number, bot_comment("limit", ctx.run, texts.limit(stamp, who), resume_at=stamp))
+        s.tracker.post_comment(ctx.number, bot_comment("limit", ctx.run, texts.limit(stamp, who), resume_at=stamp,
+                                                    by=ctx.agents[role].harness))
         self._labels(ctx.number, add=(keep,),
                      remove=tuple(x for x in (Label.IN_PROGRESS, Label.WAITING_REVIEW) if x != keep))
         return "limit"

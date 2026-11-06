@@ -51,16 +51,18 @@ def decide(ticket: Ticket, comments: Sequence[Comment], bot_id: int, now: dateti
             return Decision(Action.RESUME, "the owner answered the spec")
         return Decision(Action.SKIP, "waiting for the owner's approval of the spec")
     if Label.IN_PROGRESS in labels or Label.WAITING_REVIEW in labels:
-        return _recover(comments, bot_id, now, max_starts)
+        return _recover(comments, bot_id, now, max_starts, Label.BUILDER_CLAUDE in labels)
     return Decision(Action.SKIP, "no actionable label")
 
 
-def _recover(comments: Sequence[Comment], bot_id: int, now: datetime, max_starts: int) -> Decision:
+def _recover(comments: Sequence[Comment], bot_id: int, now: datetime, max_starts: int,
+             claude_builds: bool = False) -> Decision:
     markers = [m for c in sorted(comments, key=lambda c: (c.created_at, c.id)) if is_bot_comment(c, bot_id)
                if (m := parse_marker(c.body))]
     if markers and markers[-1].kind == "limit":
         resume_at = markers[-1].attrs.get("resume_at")
-        if resume_at and datetime.fromisoformat(resume_at) > now:
+        by_codex = markers[-1].attrs.get("by", "codex") != "claude"        # unsigned = written before the label existed
+        if resume_at and datetime.fromisoformat(resume_at) > now and not (claude_builds and by_codex):
             return Decision(Action.SKIP, f"usage limit until {resume_at}")
         return Decision(Action.RESUME, "the usage limit is over")
     last_handoff = max((i for i, m in enumerate(markers) if m.kind == "ready"), default=-1)

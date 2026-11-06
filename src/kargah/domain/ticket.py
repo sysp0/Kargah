@@ -17,6 +17,7 @@ class Label(StrEnum):
     INTERRUPT = "interrupt"
     DONE = "done"
     APPROVED = "approved"       # set by the owner: the spec is approved (GitLab swallows a /approve comment)
+    BUILDER_CLAUDE = "builder-claude"     # set by the owner: Claude builds this ticket, a Codex limit wait is ignored
     FACTORY_CHANGE = "factory-change"     # set by the owner: this ticket may change the factory definition
 
 

@@ -1,6 +1,7 @@
 """Run one ticket through build -> review -> rework until it needs a human. All state lives in git and the tracker."""
 from __future__ import annotations
 
+from kargah.domain.agents import claude_builder
 from kargah.domain.config import ProjectConfig
 from kargah.domain.decision import Action, Decision
 from kargah.domain.inputs import is_bot_comment
@@ -40,6 +41,8 @@ class TicketRun(Planning):
         s.workspace.prepare(ctx.branch, cfg.base_branch)
         definition = s.load_definition(s.workspace)     # again after the fetch: the newest default branch
         ctx.cfg, ctx.agents = definition.config, definition.agents
+        if Label.BUILDER_CLAUDE in ticket.labels:
+            ctx.agents = claude_builder(ctx.agents)
         if definition.problems:
             return self._block(ctx, f"the factory definition is invalid: {definition.problems[0]}")
         self._record_steps(ctx)
@@ -133,7 +136,7 @@ class TicketRun(Planning):
             self._labels(ctx.number, add=(Label.NEEDS_INFO,), remove=(Label.IN_PROGRESS,))
             return "question"
         if result.status == "limit":
-            return self._limited(ctx, result.resets_at, "The build agent", Label.IN_PROGRESS)
+            return self._limited(ctx, result.resets_at, "The build agent", Label.IN_PROGRESS, "implement")
         return self._block(ctx, f"the build failed: {result.error}")
 
     def _review(self, ctx: Ctx) -> str | None:
@@ -143,7 +146,7 @@ class TicketRun(Planning):
         if result.status == "interrupted":
             return self._interrupted(ctx)
         if result.status == "limit":
-            return self._limited(ctx, result.resets_at, "The reviewer", Label.WAITING_REVIEW)
+            return self._limited(ctx, result.resets_at, "The reviewer", Label.WAITING_REVIEW, "review")
         if result.status != "ok" or result.verdict is None:
             return self._block(ctx, f"the review failed: {result.error}")
         ctx.stats.reviews += 1

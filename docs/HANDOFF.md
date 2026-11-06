@@ -64,8 +64,8 @@ Option A (real factory) · GitLab first, tracker-agnostic ports · label-driven 
 
 **Phase 8 (2026-11-06):** benchmarks. `.kargah/benchmarks/<suite>/{suite.toml,tasks/*.toml}` (`adapters/bench_files.py`, validated by `kargah validate`), `domain/bench.py` (summary and recommendation: best correctness, ties within 0.05 go to the cheaper), `orchestrator/bench.py::BenchRunner` (one git worktree per trial at an exact commit, same `RunLock`, results in `<workdir>/bench/results.jsonl`), CLI `bench run SUITE --workdir DIR [--config NAME]` and `bench add-task --suite S --from-step ID --workdir DIR [--repo PATH]`. Tests with fakes only; not run live. Phases 7 and 9 wait for the owner's B2 decision.
 
-## Open owner decision (found live, 2026-11-06)
-`/approve` cannot be the approval command on GitLab issues: GitLab treats it as an MR quick action and **drops the whole note** (no comment is stored, even with text after it). `/revise` and `/decision` are kept as text. Until the owner picks another way (label `approved`, or a plain word such as `approve`/`LGTM`), the spec gate can only be passed by re-labelling by hand. Sandbox issue #22 waits in `needs-approval` with a finished spec (MR !8).
+## Spec approval (owner decided 2026-11-06)
+GitLab swallows a `/approve` comment on issues, so the owner approves a spec by adding the label `approved` (`Label.APPROVED`). The label wins over comments; a `/approve` comment still works on trackers that keep it. The label is removed when the ticket completes or is cancelled. Tests: `test_planning::test_the_approved_label_...`.
 
 ## Not done / known risks
 1. Codex as builder on a full ticket not yet run (limited until 02:24 UTC); only its limit path is proven.
@@ -83,7 +83,7 @@ Option A (real factory) · GitLab first, tracker-agnostic ports · label-driven 
 `docs/warp-review.fa.md` = PM analysis of Warp Factories and the gap table; `docs/plan-v2.fa.md` = the phased logic plan (phases 0-9), one step per Sonnet session. Phase 0 there = steps 1-2, 4-5 below. The steps below stay valid; plan-v2 orders and details them.
 
 ## Next steps (in order)
-1. Owner decides how a spec is approved on GitLab (see "Open owner decision"); then finish the live check "approve -> build" on sandbox issue #22.
+1. (done) spec approval by label `approved`.
 2. Owner decides B2 (factory-created issues, never `ready`); then phases 7 (self-improvement) and 9 (cron automation) of `docs/plan-v2.fa.md`.
 3. Run `--watch` (no `--once`) for 30 minutes on the sandbox with 2-3 tickets (plan 0.2, not done); try a live `bench run` and a live scorer (`sampling_rate` > 0) with a few cents of budget.
 4. Optional 4.7 (`DECIDE:` findings in a review) and the invariants contract (`invariants.fa.md`).

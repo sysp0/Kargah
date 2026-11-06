@@ -520,6 +520,6 @@ runner با Docker و ایزوله‌سازی (B4) · verify با computer use �
 1. **B2:** کارخانه issue بسازد ولی هرگز با `ready` (فاز ۷ و ۹ تا تأیید تو شروع نمی‌شوند).
 2. درخواست تغییر بعد از handoff = comment با `/revise` روی issue، یا comment روی diff در MR. comment معمولی ورودی نیست.
 3. بعد از revise، review مستقل دوباره اجرا می‌شود.
-4. spec خودکار فقط برای size ≥ L یا وقتی triage ابهام گزارش کند. تأیید فقط با `/approve`.
+4. spec خودکار فقط برای size ≥ L یا وقتی triage ابهام گزارش کند. تأیید با label `approved` (تصمیم مالک ۲۰۲۶-۱۱-۰۶؛ GitLab دستور `/approve` را روی issue می‌بلعد)، و `/approve` در trackerهایی که نگهش می‌دارند هنوز کار می‌کند.
 5. issue تمام‌شده label `done` می‌گیرد (برای کوئری آمار)، علاوه بر بسته شدن.
 6. scorerهای پیش‌فرض خاموش‌اند (`sampling_rate = 0`) تا هزینه‌ی judge بی‌اجازه خرج نشود.

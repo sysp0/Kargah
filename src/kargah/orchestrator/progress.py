@@ -8,7 +8,7 @@ from kargah.domain.inputs import is_bot_comment
 from kargah.domain.markers import Marker, parse_marker
 from kargah.domain.review import Verdict, parse_verdict
 from kargah.domain.stages import Progress, Review, SpecView
-from kargah.domain.ticket import Comment
+from kargah.domain.ticket import Comment, Label
 from kargah.domain.triage import TriageReport, parse_triage
 from kargah.ports.workspace import Workspace
 
@@ -29,7 +29,8 @@ def _review_comments(comments: Sequence[Comment], bot_id: int) -> list[tuple[Com
     return [(c, m.attrs) for c, m in bot_markers(comments, bot_id) if m.kind == "review" and "sha" in m.attrs]
 
 
-def read_progress(ws: Workspace, comments: Sequence[Comment], bot_id: int, base: str) -> Progress:
+def read_progress(ws: Workspace, comments: Sequence[Comment], bot_id: int, base: str,
+                  labels: frozenset[str] = frozenset()) -> Progress:
     markers = bot_markers(comments, bot_id)
     feedback_at = max((i for i, (_, m) in enumerate(markers) if m.kind == "feedback"), default=-1)
     review_at = [i for i, (_, m) in enumerate(markers) if m.kind == "review" and "sha" in m.attrs]
@@ -39,7 +40,7 @@ def read_progress(ws: Workspace, comments: Sequence[Comment], bot_id: int, base:
     return Progress(
         ws.has_work(base), ws.head(), ws.head_state() == "complete", reviews,
         markers[feedback_at][1].attrs.get("sha") if feedback_at >= 0 else None, feedback_at >= 0 and not since, since,
-        _triage(markers), _spec(comments, markers, bot_id),
+        _triage(markers), _spec(comments, markers, bot_id, Label.APPROVED in labels),
         any(task in ("build", "rework") for _, task, _ in ws.task_commits(base)))
 
 
@@ -50,12 +51,13 @@ def _triage(markers: list[tuple[Comment, Marker]]) -> TriageReport | None:
     return None
 
 
-def _spec(comments: Sequence[Comment], markers: list[tuple[Comment, Marker]], bot_id: int) -> SpecView | None:
+def _spec(comments: Sequence[Comment], markers: list[tuple[Comment, Marker]], bot_id: int,
+          label: bool = False) -> SpecView | None:
     for c, m in reversed(markers):
         if m.kind == "spec":
             owner = [x for x in sorted(comments, key=lambda x: (x.created_at, x.id))
                      if not is_bot_comment(x, bot_id) and (x.created_at, x.id) > (c.created_at, c.id)]
-            approved = bool(owner) and owner[-1].body.strip().startswith(APPROVE)
+            approved = label or (bool(owner) and owner[-1].body.strip().startswith(APPROVE))      # the label wins
             return SpecView(m.attrs.get("sha", ""), approved, bool(owner) and not approved)
     return None
 

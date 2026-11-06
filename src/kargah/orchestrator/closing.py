@@ -35,7 +35,7 @@ class Closer:
         s.log.append(self._record(ticket, comments, mr, bot_id, "cancelled"))
 
     def _clear(self, number: int, add: Label | None = None) -> None:
-        for label in (*STATUS_LABELS, Label.INTERRUPT):
+        for label in (*STATUS_LABELS, Label.INTERRUPT, Label.APPROVED):
             self._s.tracker.remove_label(number, label)
         if add:
             self._s.tracker.add_label(number, add)
@@ -55,7 +55,7 @@ class Closer:
             "first_human_review_at": _iso(min((n.created_at for n in notes), default=None)),
             "merged_at": _iso(mr.merged_at) if mr else None,
             "human_interactions": len(talk) + len(notes) + len(pushers), "human_pushed": bool(pushers),
-            "labels": sorted(set(ticket.labels) - {str(x) for x in (*STATUS_LABELS, Label.INTERRUPT)})}
+            "labels": sorted(set(ticket.labels) - {str(x) for x in (*STATUS_LABELS, Label.INTERRUPT, Label.APPROVED)})}
 
 
 def _has(comments: Sequence[Comment], bot_id: int, kind: str) -> bool:

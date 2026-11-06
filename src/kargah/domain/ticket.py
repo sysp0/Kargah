@@ -16,6 +16,7 @@ class Label(StrEnum):
     NEEDS_APPROVAL = "needs-approval"     # a spec is waiting for the owner's /approve
     INTERRUPT = "interrupt"
     DONE = "done"
+    APPROVED = "approved"       # set by the owner: the spec is approved (GitLab swallows a /approve comment)
     FACTORY_CHANGE = "factory-change"     # set by the owner: this ticket may change the factory definition
 
 

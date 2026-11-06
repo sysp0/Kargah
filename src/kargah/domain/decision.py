@@ -47,7 +47,7 @@ def decide(ticket: Ticket, comments: Sequence[Comment], bot_id: int, now: dateti
             return Decision(Action.RESUME, "the owner answered")
         return Decision(Action.SKIP, "waiting for the owner's answer")
     if Label.NEEDS_APPROVAL in labels:
-        if human_input(comments, bot_id):
+        if Label.APPROVED in labels or human_input(comments, bot_id):
             return Decision(Action.RESUME, "the owner answered the spec")
         return Decision(Action.SKIP, "waiting for the owner's approval of the spec")
     if Label.IN_PROGRESS in labels or Label.WAITING_REVIEW in labels:

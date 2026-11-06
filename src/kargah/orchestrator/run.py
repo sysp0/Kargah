@@ -59,7 +59,8 @@ class TicketRun(Planning):
             if ended := self._safe_point(ctx):
                 return ended
             comments = s.tracker.comments(ctx.number)
-            progress = read_progress(s.workspace, comments, ctx.bot_id, ctx.cfg.base_branch)
+            labels = s.tracker.get_ticket(ctx.number).labels
+            progress = read_progress(s.workspace, comments, ctx.bot_id, ctx.cfg.base_branch, labels)
             stage = next_stage(progress, ctx.cfg.max_rework, self._policy(ctx))
             if stage is Stage.AWAIT_APPROVAL:
                 return self._await_approval(ctx)

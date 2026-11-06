@@ -76,7 +76,7 @@ def test_a_large_ticket_gets_a_spec_waits_for_changes_and_approval_then_builds_f
                    [report("L"), spec("# Spec v1\n"), spec("# Spec v2\n")])
     n = ticket(w)
     assert w.engine.tick() == "awaiting-approval" and labels(w) == {"needs-approval"}
-    assert "Spec ready:" in markers(w, "spec")[0].body and "/approve" in markers(w, "spec")[0].body
+    assert "Spec ready:" in markers(w, "spec")[0].body and "label `approved`" in markers(w, "spec")[0].body
     log = w.remote_log("kargah/1")
     assert "Kargah-Task: spec" in log and "Kargah-State: complete" in log and "kargah/1" in w.host.drafts
     assert w.engine.tick() == "idle"                                   # nobody answered
@@ -162,3 +162,22 @@ def test_a_run_that_dies_after_the_triage_question_does_not_ask_it_twice(tmp_pat
         pass
     assert w.engine.tick() == "question"
     assert len(markers(w, "question")) == 1
+
+
+def test_the_approved_label_starts_the_build_without_any_comment(tmp_path):
+    w = make_world(tmp_path, [multiply_feature()], [says(PASS)], FILES, [report("L"), spec()])
+    n = ticket(w)
+    assert w.engine.tick() == "awaiting-approval"
+    w.tracker.add_label(n, "approved")
+    assert w.engine.tick() == "needs-human"
+    assert "docs/specs/1.md" in w.builder.calls[0].prompt and len(w.planner.calls) == 2
+    assert "needs-approval" not in labels(w)
+
+
+def test_the_label_wins_over_a_comment_and_the_slash_command_still_works_elsewhere(tmp_path):
+    w = make_world(tmp_path, [multiply_feature()], [says(PASS)], FILES, [report("L"), spec()])
+    n = ticket(w)
+    w.engine.tick()
+    w.tracker.human_says(n, "also mention floats")
+    w.tracker.add_label(n, "approved")
+    assert w.engine.tick() == "needs-human" and len(w.planner.calls) == 2

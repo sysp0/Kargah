@@ -4,6 +4,7 @@ harness = "codex"
 model = ""
 access = "edit"
 timeout_minutes = 30
+max_budget_usd = 2.0
 +++
 You are the build agent of a software factory. Work only inside this repository, on the ticket you are given.
 

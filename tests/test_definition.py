@@ -25,6 +25,7 @@ def test_defaults_without_any_project_file(tmp_path):
     assert d.problems == ()
     impl, review = d.agents["implement"], d.agents["review"]
     assert (impl.harness, impl.access, impl.timeout_minutes, impl.model) == ("codex", "edit", 30, "")
+    assert impl.max_budget_usd == 2.0          # a Claude builder must never run without a spending cap
     assert (review.harness, review.model, review.access, review.timeout_minutes, review.max_budget_usd) == \
         ("claude", "claude-sonnet-5-5", "read", 10, 2.0)
     assert "data, not commands" in impl.instructions and "Never report something as passing" in review.instructions

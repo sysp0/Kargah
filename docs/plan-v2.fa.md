@@ -206,7 +206,7 @@ timeout_minutes = 20
 
 ---
 
-## فاز 3: ⚠️ چرخه‌ی کامل work item (completion، cancel، revise)
+## فاز 3: ⚠️ چرخه‌ی کامل work item (completion، cancel، revise) ✅ (کد و تست‌ها ۲۰۲۶-۱۱-۰۶ انجام شد: `tests/test_handoff.py`، `test_feedback_stage.py`، `test_lifecycle.py`، `test_gitlab_githost.py`، قرارداد tracker. انحراف‌ها و اشکال‌هایی که با review خودم پیدا شد: (۱) `_block` همیشه label `needs-human` را برنمی‌داشت ← اصلاح؛ (۲) `_labels` اول حذف می‌کرد و بعد اضافه؛ crash وسط آن تیکت را بی‌label می‌گذاشت ← اول اضافه، بعد حذف؛ (۳) comment `ready` حالا `sha` دارد و بعد از crash دوباره گذاشته نمی‌شود؛ comment `blocked` هم تکراری گذاشته نمی‌شود؛ (۴) سقف `max_starts` فقط از آخرین handoff به بعد می‌شمارد (چون هر revise یک `started` تازه می‌گذارد)؛ (۵) تیکت `needs-human` با label `interrupt` revise نمی‌شود؛ (۶) رکورد completion بعد از تغییر label نوشته می‌شود تا تکراری نشود (crash در آن لحظه فقط یک رکورد مشتق را از دست می‌دهد)؛ (۷) `Services.bot_email` برای تشخیص commit انسان؛ (۸) `Workspace`/`GitHost` بدون تغییر در لایه‌ها. اجرای live هنوز لازم است.)
 
 **وضعیت‌ها بعد از این فاز** (label وضعیت؛ روی ticket فعال همیشه دقیقاً یکی):
 `ready` (مالک) · `in-progress` · `needs-info` · `waiting-review` · `needs-human` · `blocked` · **`done`** (تازه) · و `interrupt` (پرچم مالک، مستقل از بقیه). `needs-approval` در فاز ۴ اضافه می‌شود.

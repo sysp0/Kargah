@@ -24,6 +24,7 @@ class Services:
     shell: Shell
     log: LogSink
     runs: RunStore
+    bot_email: str                  # the e-mail of the bot's commits, to tell them from a person's
     load_definition: Callable[[Workspace], Definition]     # reads the default branch, never the ticket branch
     clock: Callable[[], datetime]
     run_id: Callable[[], str]

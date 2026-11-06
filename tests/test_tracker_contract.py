@@ -67,6 +67,15 @@ def test_labels_round_trip(env: Env):
     assert env.ticket not in [t.number for t in env.tracker.tickets_with_label("ready")]
 
 
+def test_a_closed_ticket_is_listed_only_when_asked_and_reports_it_is_closed(env: Env):
+    env.tracker.add_label(env.ticket, "needs-human")
+    env.tracker.close_ticket(env.ticket)
+    assert env.ticket not in [t.number for t in env.tracker.tickets_with_label("needs-human")]
+    [closed] = [t for t in env.tracker.tickets_with_label("needs-human", include_closed=True)
+                if t.number == env.ticket]
+    assert not closed.open and not env.tracker.get_ticket(env.ticket).open and closed.url
+
+
 def test_the_bot_never_answers_itself(env: Env):
     bot = env.tracker.whoami()
     env.tracker.post_comment(env.ticket, bot_comment("question", "1", "which column?"))

@@ -1,6 +1,6 @@
-The reviewer found problems in your work on ticket #$number: $title
+$source asked for changes to your work on ticket #$number: $title
 
-## Must-fix items (fix exactly these, nothing else)
+## Items to fix (fix exactly these, nothing else)
 $must_fix
 
 $conversation

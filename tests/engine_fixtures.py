@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from memory_tracker import MemoryTracker
+from memory_tracker import HUMAN, MemoryTracker
 
 from kargah.adapters.factory_files import load_definition
 from kargah.adapters.file_sources import DefaultBranchSource
@@ -18,6 +18,8 @@ from kargah.adapters.jsonl_log import JsonlLog
 from kargah.adapters.shell import BashShell
 from kargah.orchestrator.engine import Engine
 from kargah.orchestrator.services import Services
+from kargah.domain.ticket import Comment
+from kargah.ports.githost import Discussion, MrView
 from kargah.ports.harness import HarnessRequest, HarnessResult
 
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
@@ -64,17 +66,64 @@ class Clock:
 
 
 class FakeGitHost:
-    def __init__(self) -> None:
+    """Merge requests in memory; the tests play the owner with merge(), close(), say()."""
+
+    def __init__(self, clock: Clock) -> None:
+        self._clock = clock
         self.ready: list[str] = []
         self.drafts: list[str] = []
+        self.state: dict[str, str] = {}
+        self.created: dict[str, datetime] = {}
+        self.merged_at: dict[str, datetime] = {}
+        self.threads: dict[str, list[Discussion]] = {}
+        self.resolved: list[tuple[str, str]] = []           # (thread id, reply)
+        self.notes: dict[str, list[Comment]] = {}
+        self.authors: dict[str, list[str]] = {}
+        self._ids = iter(range(1000, 9999))
 
     def ensure_draft_mr(self, branch: str, base: str, title: str, description: str) -> str:
         if branch not in self.drafts:
             self.drafts.append(branch)
+            self.state[branch], self.created[branch] = "opened", self._clock()
+            self.authors[branch] = ["b@b"]
         return f"https://example/mr/{branch}"
 
     def mark_ready(self, branch: str) -> None:
         self.ready.append(branch)
+
+    def find_mr(self, branch: str) -> MrView | None:
+        if branch not in self.state:
+            return None
+        return MrView(1, f"https://example/mr/{branch}", self.state[branch], self.created[branch],
+                      self.merged_at.get(branch))
+
+    def open_discussions(self, branch: str) -> list[Discussion]:
+        done = {tid for tid, _ in self.resolved}
+        return [d for d in self.threads.get(branch, []) if d.id not in done]
+
+    def resolve_discussion(self, branch: str, discussion_id: str, reply: str) -> None:
+        self.resolved.append((discussion_id, reply))
+
+    def mr_notes(self, branch: str) -> list[Comment]:
+        return list(self.notes.get(branch, []))
+
+    def commit_authors(self, branch: str) -> list[str]:
+        return list(self.authors.get(branch, []))
+
+    # the owner's side
+    def merge(self, branch: str) -> None:
+        self.state[branch], self.merged_at[branch] = "merged", self._clock()
+
+    def close(self, branch: str) -> None:
+        self.state[branch] = "closed"
+
+    def comment_on_diff(self, branch: str, text: str, path: str = "src/calc/ops.py", line: int = 2) -> str:
+        thread_id = f"t{next(self._ids)}"
+        self.threads.setdefault(branch, []).append(Discussion(thread_id, HUMAN, text, path, line, self._clock()))
+        return thread_id
+
+    def say(self, branch: str, text: str) -> None:
+        self.notes.setdefault(branch, []).append(Comment(next(self._ids), HUMAN, text, self._clock()))
 
 
 @dataclass
@@ -128,12 +177,13 @@ class World:
 
 def make_world(tmp: Path, builder_steps: list, reviewer_steps: list, files: dict[str, str] | None = None) -> World:
     remote = make_remote(tmp, files)
-    tracker, host, clock = MemoryTracker(), FakeGitHost(), Clock()
+    clock = Clock()
+    tracker, host = MemoryTracker(), FakeGitHost(clock)
     builder, reviewer = Scripted(builder_steps), Scripted(reviewer_steps)
     workdir = tmp / "work"
     counter = iter(range(1, 1000))
     services = Services(
         tracker=tracker, githost=host, workspace=GitWorkspace(workdir / "repo", str(remote), "x", ("bot", "b@b")),
-        harness_for=lambda spec: builder if spec.role == "implement" else reviewer, shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"), runs=FsRunStore(workdir),
+        harness_for=lambda spec: builder if spec.role == "implement" else reviewer, shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"), runs=FsRunStore(workdir), bot_email="b@b",
         load_definition=lambda ws: load_definition(DefaultBranchSource(ws)), clock=clock, run_id=lambda: f"r{next(counter)}")
     return World(Engine(services, workdir / "state"), tracker, host, builder, reviewer, clock, remote, workdir)

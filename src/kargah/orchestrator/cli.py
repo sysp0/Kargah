@@ -24,6 +24,8 @@ from kargah.errors import KargahError
 from kargah.orchestrator.engine import Engine
 from kargah.orchestrator.services import Services
 
+BOT_EMAIL = "kargah-bot@users.noreply"
+
 
 def build_engine(workdir: Path, builder: str = "", build_model: str = "") -> Engine:
     try:
@@ -31,10 +33,10 @@ def build_engine(workdir: Path, builder: str = "", build_model: str = "") -> Eng
     except KeyError as exc:
         raise KargahError(f"set {exc.args[0]} (see docs/architecture-A.fa.md)") from exc
     http = UrllibHttp(url, token)
-    workspace = GitWorkspace(workdir / "repo", f"{url}/{project}.git", token, ("kargah-bot", "kargah-bot@users.noreply"))
+    workspace = GitWorkspace(workdir / "repo", f"{url}/{project}.git", token, ("kargah-bot", BOT_EMAIL))
     services = Services(
         tracker=GitLabTracker(http, project), githost=GitLabHost(http, project, url), workspace=workspace,
-        harness_for=make_harness, shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"), runs=FsRunStore(workdir),
+        harness_for=make_harness, shell=BashShell(), log=JsonlLog(workdir / "log.jsonl"), runs=FsRunStore(workdir), bot_email=BOT_EMAIL,
         load_definition=lambda ws: _overridden(load_definition(DefaultBranchSource(ws)), builder, build_model),
         clock=lambda: datetime.now(UTC), run_id=lambda: uuid.uuid4().hex[:8])
     return Engine(services, workdir / "state")

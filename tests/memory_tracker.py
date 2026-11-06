@@ -1,6 +1,7 @@
 """In-memory Tracker for tests; behaves like the real ones (system notes are not modelled)."""
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from kargah.domain.ticket import Author, Comment, Ticket
@@ -18,7 +19,7 @@ class MemoryTracker:
 
     def open_ticket(self, title: str, body: str = "", labels: tuple[str, ...] = ()) -> int:
         number = len(self._tickets) + 1
-        self._tickets[number] = Ticket(number, title, body, frozenset(labels))
+        self._tickets[number] = Ticket(number, title, body, frozenset(labels), url=f"https://example/issues/{number}")
         self._comments[number] = []
         return number
 
@@ -28,8 +29,11 @@ class MemoryTracker:
     def whoami(self) -> Author:
         return BOT
 
-    def tickets_with_label(self, label: str) -> list[Ticket]:
-        return [t for t in self._tickets.values() if label in t.labels]
+    def tickets_with_label(self, label: str, include_closed: bool = False) -> list[Ticket]:
+        return [t for t in self._tickets.values() if label in t.labels and (t.open or include_closed)]
+
+    def close_ticket(self, number: int) -> None:
+        self._tickets[number] = replace(self._tickets[number], open=False)
 
     def get_ticket(self, number: int) -> Ticket:
         return self._tickets[number]
@@ -42,11 +46,11 @@ class MemoryTracker:
 
     def add_label(self, number: int, label: str) -> None:
         t = self._tickets[number]
-        self._tickets[number] = Ticket(t.number, t.title, t.body, t.labels | {label})
+        self._tickets[number] = replace(t, labels=t.labels | {label})
 
     def remove_label(self, number: int, label: str) -> None:
         t = self._tickets[number]
-        self._tickets[number] = Ticket(t.number, t.title, t.body, t.labels - {label})
+        self._tickets[number] = replace(t, labels=t.labels - {label})
 
     def _add(self, number: int, author: Author, body: str) -> Comment:
         self._clock += timedelta(seconds=1)

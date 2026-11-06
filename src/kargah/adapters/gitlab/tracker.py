@@ -5,10 +5,9 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import quote
 
+from kargah.adapters.gitlab.paging import pages
 from kargah.domain.ticket import Author, Comment, Ticket
 from kargah.ports.http import HttpClient
-
-PAGE = 100
 
 
 class GitLabTracker:
@@ -19,16 +18,17 @@ class GitLabTracker:
     def whoami(self) -> Author:
         return _author(self._http.request("GET", "user"))
 
-    def tickets_with_label(self, label: str) -> list[Ticket]:
-        rows = self._pages(f"{self._base}/issues", {"labels": label, "state": "opened", "order_by": "created_at",
-                                                    "sort": "asc"})
+    def tickets_with_label(self, label: str, include_closed: bool = False) -> list[Ticket]:
+        state = "all" if include_closed else "opened"
+        rows = pages(self._http, f"{self._base}/issues", {"labels": label, "state": state, "order_by": "created_at",
+                                                          "sort": "asc"})
         return [_ticket(r) for r in rows]
 
     def get_ticket(self, number: int) -> Ticket:
         return _ticket(self._http.request("GET", f"{self._base}/issues/{number}"))
 
     def comments(self, number: int) -> list[Comment]:
-        rows = self._pages(f"{self._base}/issues/{number}/notes", {"sort": "asc", "order_by": "created_at"})
+        rows = pages(self._http, f"{self._base}/issues/{number}/notes", {"sort": "asc", "order_by": "created_at"})
         return [_comment(r) for r in rows if not r.get("system")]
 
     def post_comment(self, number: int, body: str) -> Comment:
@@ -40,15 +40,8 @@ class GitLabTracker:
     def remove_label(self, number: int, label: str) -> None:
         self._http.request("PUT", f"{self._base}/issues/{number}", json={"remove_labels": label})
 
-    def _pages(self, path: str, params: dict[str, Any]) -> list[dict[str, Any]]:
-        rows: list[dict[str, Any]] = []
-        page = 1
-        while True:
-            batch = self._http.request("GET", path, params={**params, "per_page": PAGE, "page": page})
-            rows.extend(batch)
-            if len(batch) < PAGE:
-                return rows
-            page += 1
+    def close_ticket(self, number: int) -> None:
+        self._http.request("PUT", f"{self._base}/issues/{number}", json={"state_event": "close"})
 
 
 def _author(row: dict[str, Any]) -> Author:
@@ -57,7 +50,8 @@ def _author(row: dict[str, Any]) -> Author:
 
 def _ticket(row: dict[str, Any]) -> Ticket:
     return Ticket(number=row["iid"], title=row["title"], body=row.get("description") or "",
-                  labels=frozenset(row.get("labels", [])))
+                  labels=frozenset(row.get("labels", [])), open=row.get("state", "opened") == "opened",
+                  url=row.get("web_url", ""))
 
 
 def _comment(row: dict[str, Any]) -> Comment:

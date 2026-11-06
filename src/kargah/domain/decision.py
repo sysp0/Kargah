@@ -16,12 +16,24 @@ class Action(StrEnum):
     RESUME = "resume"
     SKIP = "skip"
     BLOCK = "block"
+    COMPLETE = "complete"      # the MR was merged
+    CANCEL = "cancel"          # the issue was closed while the MR is still open
+    REVISE = "revise"          # the owner asked for changes after the handoff
+
+
+@dataclass(frozen=True)
+class ReviseItem:
+    source: str                # "mr" (a diff discussion) | "issue" (a /revise comment)
+    ref: str                   # discussion id or comment id
+    where: str                 # "path:line" or ""
+    text: str
 
 
 @dataclass(frozen=True)
 class Decision:
     action: Action
     reason: str
+    items: tuple[ReviseItem, ...] = ()
 
 
 def decide(ticket: Ticket, comments: Sequence[Comment], bot_id: int, now: datetime, max_starts: int) -> Decision:
@@ -47,7 +59,8 @@ def _recover(comments: Sequence[Comment], bot_id: int, now: datetime, max_starts
         if resume_at and datetime.fromisoformat(resume_at) > now:
             return Decision(Action.SKIP, f"usage limit until {resume_at}")
         return Decision(Action.RESUME, "the usage limit is over")
-    starts = sum(1 for m in markers if m.kind == "started")
+    last_handoff = max((i for i, m in enumerate(markers) if m.kind == "ready"), default=-1)
+    starts = sum(1 for m in markers[last_handoff + 1:] if m.kind == "started")      # a new cycle after each handoff
     if starts >= max_starts:
         return Decision(Action.BLOCK, f"{starts} runs stopped without finishing")
     return Decision(Action.RESUME, "a run stopped without finishing")

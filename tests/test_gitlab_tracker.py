@@ -2,7 +2,8 @@ from typing import Any
 
 import pytest
 
-from kargah.adapters.gitlab.tracker import PAGE, GitLabTracker
+from kargah.adapters.gitlab.paging import PAGE
+from kargah.adapters.gitlab.tracker import GitLabTracker
 
 NOTE = {"id": 5, "body": "hi", "created_at": "2026-01-01T10:00:00.000Z", "author": {"id": 9, "username": "bot"}}
 

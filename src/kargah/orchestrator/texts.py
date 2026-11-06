@@ -33,3 +33,15 @@ def ready_for_human(mr_url: str, verdict: Verdict, files: int) -> str:
     notes = "\n".join(extra) if extra else "- none"
     return (f"Ready for your review: {mr_url}\n\n{files} file(s) changed. The check passed, the new tests fail without "
             f"the change, and the independent review has no must-fix.\n\nNot blocking:\n{notes}")
+
+
+def feedback_body(items_text: str) -> str:
+    return f"The owner asked for these changes; I am working on them:\n\n{items_text}"
+
+
+def merged(url: str) -> str:
+    return f"Merged: {url}"
+
+
+def cancelled() -> str:
+    return "Cancelled: the issue was closed. The branch and draft MR are kept."

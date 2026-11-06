@@ -58,3 +58,8 @@ def questions_body(questions: tuple[str, ...]) -> str:
 
 def spec_body(url: str, path: str) -> str:
     return (f"Spec ready: {url} (`{path}`). Add the label `approved` to start the build, or comment what to change.")
+
+
+def escalated(reason: str) -> str:
+    return (f"The first builder is stuck: {reason}\n\nI call in Claude for one extra round. "
+            "If that does not fix it, I stop and need you.")

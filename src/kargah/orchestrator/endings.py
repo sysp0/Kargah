@@ -1,11 +1,11 @@
 """Shared by every stage of a run: how a run ends, saves its work, and changes labels."""
 from __future__ import annotations
 
-import itertools
 from datetime import datetime
 
+from kargah.domain.agents import AgentSpec, claude_builder
 from kargah.domain.markers import bot_comment
-from kargah.domain.stages import Stage
+from kargah.domain.stages import Progress, Stage
 from kargah.domain.ticket import STATUS_LABELS, Label
 from kargah.orchestrator import texts
 from kargah.orchestrator.context import Ctx
@@ -74,13 +74,27 @@ class Endings:
         return True
 
     def _record_steps(self, ctx: Ctx) -> None:
-        s, numbers = self.s, itertools.count(1)
-        text = f"# #{ctx.number} {ctx.ticket.title}\n\n{ctx.ticket.body}"
+        ctx.harnesses = {role: self._recording(ctx, spec) for role, spec in ctx.agents.items()}
 
-        def wrap(inner: Harness) -> Harness:
-            return RecordingHarness(inner, s.runs, ctx.cfg.prices, s.clock, ctx.run, ctx.number, s.workspace,
-                                    ctx.cfg.base_branch, text, numbers, ctx.steps)
-        ctx.harnesses = {role: wrap(s.harness_for(spec)) for role, spec in ctx.agents.items()}
+    def _recording(self, ctx: Ctx, spec: AgentSpec) -> Harness:
+        s = self.s
+        text = f"# #{ctx.number} {ctx.ticket.title}\n\n{ctx.ticket.body}"
+        return RecordingHarness(s.harness_for(spec), s.runs, ctx.cfg.prices, s.clock, ctx.run, ctx.number, s.workspace,
+                                ctx.cfg.base_branch, text, ctx.step_numbers, ctx.steps)
+
+    def _use_claude_builder(self, ctx: Ctx) -> None:
+        ctx.agents = claude_builder(ctx.agents)
+        ctx.harnesses = {**ctx.harnesses, "implement": self._recording(ctx, ctx.agents["implement"])}
+
+    @staticmethod
+    def _can_escalate(ctx: Ctx, progress: Progress) -> bool:
+        """Claude helps once per ticket, and only when a different builder is at work now."""
+        return not progress.escalated and ctx.agents["implement"].harness != "claude"
+
+    def _escalate(self, ctx: Ctx, reason: str) -> None:
+        self.s.tracker.post_comment(ctx.number, bot_comment("escalated", ctx.run, texts.escalated(reason)))
+        ctx.stuck = reason
+        self._use_claude_builder(ctx)
 
     def _labels(self, number: int, add: tuple[Label, ...], remove: tuple[Label, ...]) -> None:
         for label in add:                    # add first: a crash in between leaves two labels, never none

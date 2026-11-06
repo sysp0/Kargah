@@ -54,6 +54,7 @@ class Progress:
     triage: TriageReport | None = None
     spec: SpecView | None = None
     has_build: bool | None = None            # None: same as has_work (a build or rework commit exists otherwise)
+    escalated: bool = False                  # Claude was called in once to help a stuck Codex builder (hard stop)
 
 
 def spec_needed(p: Progress, policy: Policy) -> bool:
@@ -84,4 +85,4 @@ def next_stage(p: Progress, max_rework: int, policy: Policy | None = None) -> St
         return Stage.PASS
     counted = p.reviews if p.reviews_since_feedback is None else p.reviews_since_feedback
     failed_rounds = sum(1 for r in counted if r.must_fix > 0)
-    return Stage.BLOCKED if failed_rounds > max_rework else Stage.REWORK
+    return Stage.BLOCKED if failed_rounds > max_rework + int(p.escalated) else Stage.REWORK

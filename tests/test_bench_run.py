@@ -100,7 +100,7 @@ def test_a_busy_lock_stops_the_benchmark(tmp_path):
 
 
 def test_a_build_that_changes_nothing_scores_zero_without_asking_a_judge(tmp_path):
-    nothing = scripted(*[says("nothing to do")] * 4)       # 2 repetitions x (first try + one fix round)
+    nothing = scripted(*[says("nothing to do")] * 6)       # 2 repetitions x (first try + two fix rounds)
     w, s, *_ = bench_world(tmp_path, scripted(), nothing, [])
     bench, definition = runner(w, s, tmp_path)
     bench.run(definition, "small", "codex-default")

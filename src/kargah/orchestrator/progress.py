@@ -41,7 +41,8 @@ def read_progress(ws: Workspace, comments: Sequence[Comment], bot_id: int, base:
         ws.has_work(base), ws.head(), ws.head_state() == "complete", reviews,
         markers[feedback_at][1].attrs.get("sha") if feedback_at >= 0 else None, feedback_at >= 0 and not since, since,
         _triage(markers), _spec(comments, markers, bot_id, Label.APPROVED in labels),
-        any(task in ("build", "rework") for _, task, _ in ws.task_commits(base)))
+        any(task in ("build", "rework") for _, task, _ in ws.task_commits(base)),
+        any(m.kind == "escalated" for _, m in markers))
 
 
 def _triage(markers: list[tuple[Comment, Marker]]) -> TriageReport | None:

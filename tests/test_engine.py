@@ -32,7 +32,7 @@ def test_happy_path_ends_in_needs_human_with_proof_and_log(tmp_path):
 
 def test_tests_that_pass_without_the_change_are_not_accepted(tmp_path):
     lazy = writes({"tests/test_lazy.py": "def test_x():\n    assert 1 == 1\n"})
-    w = make_world(tmp_path, [lazy, lazy], [])
+    w = make_world(tmp_path, [lazy] * 6, [])        # 3 tries by Codex, then 3 by Claude (the one escalation)
     start(w)
     assert w.engine.tick() == "blocked"
     assert "blocked" in labels(w)
@@ -50,7 +50,7 @@ def test_must_fix_goes_to_rework_then_passes(tmp_path):
 
 def test_rework_is_capped_then_blocked(tmp_path):
     edit = lambda i: writes({"src/calc/ops.py": MULTIPLY_CODE + f"\n# {i}\n"})  # noqa: E731
-    w = make_world(tmp_path, [multiply_feature(), edit(1), edit(2)], [says(MUST_FIX)] * 3)
+    w = make_world(tmp_path, [multiply_feature(), *[edit(i) for i in range(1, 5)]], [says(MUST_FIX)] * 5)   # 3 reworks + 1 Claude
     start(w)
     assert w.engine.tick() == "blocked"
 

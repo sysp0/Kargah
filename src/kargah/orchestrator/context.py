@@ -1,7 +1,8 @@
 """What one run knows about its ticket."""
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+import itertools
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 
 from kargah.domain.agents import AgentSpec
@@ -36,6 +37,8 @@ class Ctx:
     agents: Mapping[str, AgentSpec] = field(default_factory=dict)
     triaged: bool = False                              # triage ran in this run: it must not run twice
     harnesses: Mapping[str, Harness] = field(default_factory=dict)     # per role, wrapped to record every call
+    step_numbers: Iterator[int] = field(default_factory=lambda: itertools.count(1))     # step ids of this run
+    stuck: str = ""                                    # why the first builder gave up (told to the helper)
 
     @property
     def number(self) -> int:

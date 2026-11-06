@@ -10,7 +10,7 @@ def feature_with_config(config: str, text: str = "done"):
 
 
 def test_a_build_may_not_change_the_definition(tmp_path):
-    w = make_world(tmp_path, [feature_with_config('[check]\ncommand = "true"\n'), says("done")], [])
+    w = make_world(tmp_path, [feature_with_config('[check]\ncommand = "true"\n')] + [says("done")] * 5, [])    # 3 Codex tries, 3 Claude tries
     w.tracker.open_ticket("add multiply", "add multiply(a, b)", ("ready",))
     assert w.engine.tick() == "blocked"
     assert "factory-change" in w.builder.calls[1].prompt

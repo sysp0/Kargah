@@ -69,8 +69,14 @@ class TicketRun(Planning):
                 return self._await_approval(ctx)
             if stage is Stage.PASS:
                 return self._pass(ctx, comments)
+            if progress.escalated and ctx.agents["implement"].harness != "claude":
+                self._use_claude_builder(ctx)          # a run that restarts after the escalation keeps Claude
             if stage is Stage.BLOCKED:
-                return self._block(ctx, "the reviewer still found must-fix problems after the allowed rework rounds")
+                why = "the reviewer still found must-fix problems after the allowed rework rounds"
+                if self._can_escalate(ctx, progress):
+                    self._escalate(ctx, why)
+                    continue
+                return self._block(ctx, why)
             outcome = self._stage(ctx, stage, comments, progress)
             if outcome:
                 return outcome
@@ -119,7 +125,7 @@ class TicketRun(Planning):
         agent = sized_agent(ctx.agents["implement"], progress.triage)
         task = BuildTask(ctx.harnesses["implement"], s.shell, ctx.cfg, agent)
         result = task.run(ws, ctx.ticket, owners, ctx.cfg.base_branch, rework_items=items,
-                          context=build_context(progress, ctx.number),
+                          context=build_context(progress, ctx.number, ctx.stuck),
                           rework_source="The owner" if from_owner else "The reviewer", should_stop=ctx.should_stop)
         ctx.stats.build_rounds += 1
         ctx.stats.check_fails += result.check_fails
@@ -137,6 +143,9 @@ class TicketRun(Planning):
             return "question"
         if result.status == "limit":
             return self._limited(ctx, result.resets_at, "The build agent", Label.IN_PROGRESS, "implement")
+        if result.status == "failed" and self._can_escalate(ctx, progress):
+            self._escalate(ctx, f"the build failed: {result.error}")
+            return None
         return self._block(ctx, f"the build failed: {result.error}")
 
     def _review(self, ctx: Ctx) -> str | None:

@@ -36,7 +36,7 @@ def compose(spec: AgentSpec, task_text: str, **values: object) -> str:
     return f"{instructions}{skills}\n\n{task_text}"
 
 
-def build_context(progress: Progress, number: int) -> str:
+def build_context(progress: Progress, number: int, stuck: str = "") -> str:
     """What the earlier stages produced, for the build agent: acceptance criteria and the approved spec."""
     parts = []
     if progress.triage:
@@ -44,6 +44,9 @@ def build_context(progress: Progress, number: int) -> str:
     if progress.spec and progress.spec.approved:
         parts.append(f"## Approved spec\nThe approved spec is `docs/specs/{number}.md`. Its Validation criteria are your "
                      f"checklist. Do not diverge from it; if it is wrong, ask with QUESTION.")
+    if stuck:
+        parts.append(f"## You were called in to help\nThe first builder is stuck: {stuck}\n"
+                     "The branch holds its work so far. Find the cause, fix it quickly and keep the change small.")
     return "\n\n".join(parts)
 
 

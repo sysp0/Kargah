@@ -34,11 +34,14 @@ class GitWorkspace:
             raise KargahError(f"git {args[0]} failed: {proc.stderr.strip()[-300:]}")
         return proc.stdout.strip()
 
-    def prepare(self, branch: str, base: str) -> None:
+    def refresh(self) -> None:
         if not (self.root / ".git").is_dir():
             self.root.parent.mkdir(parents=True, exist_ok=True)
             self._git("clone", self._remote, str(self.root), cwd=self.root.parent)
         self._git("fetch", "origin", "--prune")
+
+    def prepare(self, branch: str, base: str) -> None:
+        self.refresh()
         self._git("reset", "--hard", check=False)
         self._git("clean", "-fd")
         remote = self._git("ls-remote", "--heads", "origin", branch)

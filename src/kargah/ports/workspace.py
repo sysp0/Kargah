@@ -9,6 +9,9 @@ from typing import Protocol
 class Workspace(Protocol):
     root: Path
 
+    def refresh(self) -> None:
+        """Clone when missing, else fetch: the remote default branch (the factory definition) is current."""
+
     def prepare(self, branch: str, base: str) -> None:
         """Clone or fetch, check out the ticket branch (from origin when it exists, else from base). Clean tree."""
 

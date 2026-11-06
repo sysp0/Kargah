@@ -199,7 +199,7 @@ timeout_minutes = 20
 - CLI: `--builder` و `--build-model` می‌مانند و **روی** فایل‌ها override می‌کنند (برای وقتی که Codex limit خورده).
 - تست‌ها (`tests/test_definition.py`): پیش‌فرض بدون فایل پروژه؛ override یک کلید؛ body خالی و body پر؛ کلید ناشناخته؛ role ناشناخته؛ skill با name نادرست؛ skill مخصوص role روی skill مشترک؛ متن prompt نهایی شامل فهرست skill.
 
-**2.3 `kargah validate` و رفتار engine با definition خراب**
+**2.3 `kargah validate` و رفتار engine با definition خراب** ✅ (انجام شد، ۲۰۲۶-۱۱-۰۶؛ `tests/test_validate.py`). انحراف: `Workspace.refresh()` (clone یا fetch) اول هر `tick` صدا زده می‌شود تا definition همیشه تازه باشد؛ بدون آن اولین tick روی clone خالی خطا را نمی‌دید. `watch` هم روی `config-error` بین poll‌ها صبر می‌کند.
 - `orchestrator/cli.py`: زیردستور `validate --repo PATH`. خروجی هر problem یک خط؛ exit 1 اگر problem دارد، وگرنه `ok` و exit 0.
 - `Engine.tick()`: اگر definition شاخه‌ی پیش‌فرض problem دارد، خروجی `config-error: <اولین problem>` است و **هیچ ticketی دست نمی‌خورد**. (پیشنهاد به مالک: `kargah validate --repo .` را در `scripts/check.sh` پروژه بگذارد تا خطا در MR دیده شود.)
 - تست‌ها: CLI روی پوشه‌ی سالم و خراب؛ engine با definition خراب ← `config-error` و هیچ comment یا labelی ساخته نمی‌شود.

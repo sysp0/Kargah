@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from kargah.adapters.factory_files import load_definition, with_overrides
-from kargah.adapters.file_sources import DefaultBranchSource
+from kargah.adapters.file_sources import DefaultBranchSource, DirSource
 from kargah.adapters.fs_runstore import FsRunStore
 from kargah.adapters.git_workspace import GitWorkspace
 from kargah.adapters.gitlab.githost import GitLabHost
@@ -53,6 +53,12 @@ def _overridden(definition: Definition, builder: str, model: str) -> Definition:
     return with_overrides(definition, "implement", **changes) if changes else definition
 
 
+def validate(repo: Path) -> int:
+    problems = load_definition(DirSource(repo)).problems
+    print("\n".join(problems) if problems else "ok")
+    return 1 if problems else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="kargah")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -63,7 +69,11 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--builder", choices=("codex", "claude"), default="",
                      help="override the implement agent's harness")
     run.add_argument("--build-model", default="")
+    check = sub.add_parser("validate", help="check the factory definition (.kargah/) of a repository")
+    check.add_argument("--repo", type=Path, default=Path("."))
     args = parser.parse_args(argv)
+    if args.command == "validate":
+        return validate(args.repo)
     try:
         engine = build_engine(args.workdir, args.builder, args.build_model)
     except KargahError as exc:

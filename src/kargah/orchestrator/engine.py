@@ -26,7 +26,11 @@ class Engine:
             if not lock.acquired:
                 return "busy"
             s = self._s
-            cfg = s.load_definition(s.workspace).config
+            s.workspace.refresh()
+            definition = s.load_definition(s.workspace)
+            if definition.problems:
+                return f"config-error: {definition.problems[0]}"      # no ticket is touched
+            cfg = definition.config
             s.runs.prune(s.clock() - timedelta(days=cfg.runs_keep_days))
             run = TicketRun(s)
             for ticket, decision in self._candidates(cfg.max_starts):
@@ -43,7 +47,7 @@ class Engine:
             except Exception as exc:  # noqa: BLE001 - the loop must survive one bad ticket; the next tick retries
                 outcome = f"error: {type(exc).__name__}: {exc}"
             report(outcome)
-            if outcome in ("idle", "busy") or outcome.startswith("error"):
+            if outcome in ("idle", "busy") or outcome.startswith(("error", "config-error")):
                 time.sleep(poll_seconds)
 
     def _candidates(self, max_starts: int) -> Iterator[tuple[Ticket, Decision]]:

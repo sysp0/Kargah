@@ -38,12 +38,12 @@ def git(cwd: Path, *args: str) -> str:
                           capture_output=True, text=True).stdout.strip()
 
 
-def make_remote(tmp: Path) -> Path:
+def make_remote(tmp: Path, files: dict[str, str] | None = None) -> Path:
     remote, seed = tmp / "remote.git", tmp / "seed"
     git(tmp, "init", "-q", "--bare", "-b", "main", str(remote))
     seed.mkdir()
     git(seed, "init", "-q", "-b", "main")
-    for rel, text in SEED.items():
+    for rel, text in {**SEED, **(files or {})}.items():
         (seed / rel).parent.mkdir(parents=True, exist_ok=True)
         (seed / rel).write_text(text)
     git(seed, "add", "-A")
@@ -126,8 +126,8 @@ class World:
         return git(self.remote, "log", "--format=%s%n%(trailers:only,unfold)", branch)
 
 
-def make_world(tmp: Path, builder_steps: list, reviewer_steps: list) -> World:
-    remote = make_remote(tmp)
+def make_world(tmp: Path, builder_steps: list, reviewer_steps: list, files: dict[str, str] | None = None) -> World:
+    remote = make_remote(tmp, files)
     tracker, host, clock = MemoryTracker(), FakeGitHost(), Clock()
     builder, reviewer = Scripted(builder_steps), Scripted(reviewer_steps)
     workdir = tmp / "work"

@@ -20,7 +20,7 @@ from . import events, forge, gitops
 from . import plan as plan_mod
 from .config import Config
 from .qa import QA
-from .tasks import mark
+from .plan_tasks import mark
 from .trybox import link
 
 DEFAULT_LINKS = ["project-a/.env", "project-ui/ui/node_modules", "qa/node_modules"]

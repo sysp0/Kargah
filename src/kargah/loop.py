@@ -29,14 +29,14 @@ import time
 import traceback
 from pathlib import Path
 
-from . import gitops, holds, tasks
+from . import gitops, holds, plan_tasks as tasks
 from . import plan as plan_mod
 from .config import Config
 from .events import Run
 from .feature import PREFLIGHT, Feature, code_hash, plan_branch_name
 from .forge import Issue, Tracker
 from .journal import Journal
-from .tasks import mark
+from .plan_tasks import mark
 from .qaloop import QaLoop
 from .triage import Triage
 from .wip import Wip

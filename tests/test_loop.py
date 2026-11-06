@@ -3,7 +3,8 @@ import json
 from conftest import git
 from helpers import PASS, answer, by_title, issues, labels, put_issue, setup, work
 
-from kargah import config, events, forge, loop, tasks
+from kargah import config, events, forge, loop
+from kargah import plan_tasks as tasks
 
 
 def comment_marks(issue):

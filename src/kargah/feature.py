@@ -21,7 +21,7 @@ from . import events as ev
 from . import plan as plan_mod
 from .config import Config, load
 from .events import Run
-from .tasks import Trace
+from .plan_tasks import Trace
 
 PROMPTS = Path(__file__).parent / "prompts"
 AGENT_FAILED = "AGENT FAILED: "

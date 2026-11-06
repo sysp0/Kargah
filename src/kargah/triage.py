@@ -18,7 +18,7 @@ from . import plan as plan_mod
 from .config import Config
 from .events import Run
 from .forge import Issue, Tracker
-from .tasks import Trace, mark, marker
+from .plan_tasks import Trace, mark, marker
 
 KINDS = ("FIX", "PLAN", "QUESTION", "NOTE")
 ISSUES_HEAD = ("# Fix rows of plan {stage}\n\nWritten by devchain's triage from issues. A fix row I<n> repairs built "

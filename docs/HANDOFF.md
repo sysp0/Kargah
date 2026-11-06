@@ -53,6 +53,9 @@ Option A (real factory) · GitLab first, tracker-agnostic ports · label-driven 
 9. Sandbox leftovers: issue #6 (limit evidence), #7 (blocked, draft MR !1), #8 (needs-human, MR !2); stale probe bot user in the sandbox. Delete freely.
 10. Secrets: nothing secret is in the repo (checked); keep it so.
 
+## Plan v2 (2026-11-06, Warp Factories review)
+`docs/warp-review.fa.md` = PM analysis of Warp Factories and the gap table; `docs/plan-v2.fa.md` = the phased logic plan (phases 0-9), one step per Sonnet session. Phase 0 there = steps 1-2, 4-5 below. The steps below stay valid; plan-v2 orders and details them.
+
 ## Next steps (in order)
 1. After 02:24 UTC: run the factory with Codex on a fresh `ready` issue in the sandbox; confirm WIP-commit/resume with a real Codex run; record the result in `first-run.fa.md`.
 2. Run `--watch` (no `--once`) for a while on the sandbox with 2-3 tickets: check idle polling, ordering, limit wait, the lock; fix what breaks.

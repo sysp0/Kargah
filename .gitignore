@@ -3,3 +3,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .kargah/state/
+
+# reference videos and screenshots (not part of the product)
+media/

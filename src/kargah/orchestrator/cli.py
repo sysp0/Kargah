@@ -7,9 +7,11 @@ import json
 import os
 import signal
 import sys
+import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from kargah.adapters.factory_files import load_definition, with_overrides
 from kargah.adapters.file_sources import DefaultBranchSource, DirSource
@@ -22,6 +24,7 @@ from kargah.adapters.gitlab.tracker import GitLabTracker
 from kargah.adapters.harness_factory import make_harness
 from kargah.adapters.jsonl_log import JsonlLog
 from kargah.adapters.shell import BashShell
+from kargah.adapters.webui import make_server
 from kargah.domain.agents import Definition
 from kargah.errors import KargahError
 from kargah.orchestrator.bench import BenchRunner, add_task
@@ -116,6 +119,33 @@ def _show(args: argparse.Namespace) -> int:
     return 0
 
 
+def ui_command(args: argparse.Namespace) -> int:
+    """A read-only page on this machine: numbers from the workdir, the inbox from the tracker when it is configured."""
+    cache: dict[str, Any] = {"at": 0.0, "rows": []}
+
+    def inbox() -> list[dict[str, Any]]:
+        if time.monotonic() - cache["at"] > 30:         # at most one tracker round trip per 30 s
+            try:
+                cache["rows"] = [dataclasses.asdict(r) for r in collect_inbox(_gitlab_tracker(), datetime.now(UTC))]
+            except OSError as exc:
+                raise KargahError(f"the tracker could not be read: {exc}") from exc
+            cache["at"] = time.monotonic()
+        return cache["rows"]
+
+    try:
+        url, project, _ = _gitlab_env()
+        provider, base = inbox, f"{url.rstrip('/')}/{project}/-/issues"
+    except KargahError:
+        provider, base = None, ""
+    server = make_server(args.workdir, args.host, args.port, provider, base)
+    print(f"kargah ui: http://{args.host}:{server.server_address[1]}  (read-only, Ctrl+C to stop)", flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def bench_command(args: argparse.Namespace) -> int:
     try:
         if args.bench_command == "add-task":
@@ -165,6 +195,10 @@ def main(argv: list[str] | None = None) -> int:
     bench_add.add_argument("--from-step", required=True)
     bench_add.add_argument("--workdir", type=Path, required=True)
     bench_add.add_argument("--repo", type=Path, default=Path("."), help="where .kargah/ is written (your checkout)")
+    ui = sub.add_parser("ui", help="a read-only web page with the numbers, runs, scores and benchmarks")
+    ui.add_argument("--workdir", type=Path, required=True)
+    ui.add_argument("--host", default="127.0.0.1")
+    ui.add_argument("--port", type=int, default=8765)
     check = sub.add_parser("validate", help="check the factory definition (.kargah/) of a repository")
     check.add_argument("--repo", type=Path, default=Path("."))
     args = parser.parse_args(argv)
@@ -172,6 +206,8 @@ def main(argv: list[str] | None = None) -> int:
         return validate(args.repo)
     if args.command == "score":
         return score_command(args)
+    if args.command == "ui":
+        return ui_command(args)
     if args.command == "bench":
         return bench_command(args)
     if args.command in ("report", "inbox"):

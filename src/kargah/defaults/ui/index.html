@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kargah</title>
+<style>
+/* Layout after Warp Factories: fixed sidebar, breadcrumb bar, one content column. Read-only for now. */
+:root{--bg:#ffffff;--side:#f6f7f9;--fg:#15191e;--muted:#6a7580;--line:#e3e7eb;--accent:#15191e;--on-accent:#fff;
+  --good:#1a7f4b;--warn:#b45309;--bad:#b42318;--c1:#5b5bd6;--c2:#e0762b;--c3:#2a9d8f;--c4:#c2467a;--c5:#8a94a0;--hover:#eceff2}
+@media (prefers-color-scheme:dark){:root{--bg:#101418;--side:#161b20;--fg:#e8edf2;--muted:#8d99a5;--line:#273039;--accent:#e8edf2;--on-accent:#101418;
+  --good:#4cc38a;--warn:#f0a35e;--bad:#f27d72;--c1:#8b8bf0;--c2:#f0955a;--c3:#4fd1c5;--c4:#e57aa6;--c5:#8d99a5;--hover:#1f272e}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;display:flex}
+aside{width:224px;flex:none;background:var(--side);border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+aside .brand{font-weight:700;padding:4px 10px 12px;font-size:15px}
+aside .group{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:12px 10px 4px}
+aside a{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:6px;color:var(--fg);text-decoration:none}
+aside a:hover{background:var(--hover)}aside a.on{background:var(--hover);font-weight:600}
+aside a.off{color:var(--muted);pointer-events:none;opacity:.7}
+aside .soon{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:0 6px}
+aside .badge{font-size:11px;background:var(--accent);color:var(--on-accent);border-radius:9px;padding:0 7px}
+main{flex:1;min-width:0;display:flex;flex-direction:column;height:100%}
+header{display:flex;justify-content:space-between;align-items:center;padding:10px 24px;border-bottom:1px solid var(--line);color:var(--muted)}
+header b{color:var(--fg)}
+header select,button{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+#view{padding:24px;overflow:auto;flex:1}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:14px;margin:24px 0 8px}.sub{color:var(--muted);margin:0 0 16px}
+.tabs{display:flex;gap:6px;margin:12px 0 20px}
+.tabs a{padding:4px 12px;border-radius:14px;color:var(--fg);text-decoration:none;border:1px solid transparent}
+.tabs a.on{background:var(--accent);color:var(--on-accent)}.tabs a:not(.on):hover{border-color:var(--line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.card .k{color:var(--muted);font-size:12px}.card .v{font-size:26px;font-weight:600;line-height:1.3;font-variant-numeric:tabular-nums}
+.card .n{color:var(--muted);font-size:12px}
+table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:12px}td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:10px;padding:0 8px;font-size:12px}
+.pill.good{color:var(--good);border-color:var(--good)}.pill.warn{color:var(--warn);border-color:var(--warn)}.pill.bad{color:var(--bad);border-color:var(--bad)}
+svg{display:block;width:100%;height:auto}svg text{fill:var(--muted);font:11px system-ui,sans-serif}
+.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+.run{border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:10px}
+.run .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.run .top .grow{flex:1}
+.bar{display:flex;height:14px;margin-top:10px;border-radius:4px;overflow:hidden;background:var(--hover)}
+.bar span{display:block;min-width:3px}
+.empty{color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:28px;text-align:center}
+.reason{color:var(--muted);font-size:13px;max-width:70ch}
+a.link{color:inherit}
+@media (max-width:760px){aside{display:none}#view{padding:16px}}
+</style>
+</head>
+<body>
+<aside id="side"></aside>
+<main>
+  <header><div id="crumb"></div><div>Window <select id="since"><option>24h</option><option selected>7d</option><option>30d</option><option>all</option></select></div></header>
+  <div id="view"></div>
+</main>
+<script>
+const ROLES = {implement:'--c1', review:'--c2', triage:'--c3', spec:'--c4', judge:'--c5'};
+const NAV = [
+  ['', [['inbox','Inbox'],['runs','Runs']]],
+  ['Factory', [['dashboard','Dashboard'],['agents','Agents',1],['automations','Automations',1],['scorers','Scorers'],
+               ['improvement','Self-improvement'],['benchmarks','Benchmarks'],['definition','Factory definition',1]]],
+];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const usd = (n) => n == null ? 'unknown' : '$' + Number(n).toFixed(n < 10 ? 3 : 2);
+const pct = (n) => n == null ? '-' : Math.round(n * 100) + '%';
+const dur = (s) => s == null ? '-' : s >= 3600 ? (s / 3600).toFixed(1) + 'h' : s >= 60 ? Math.round(s / 60) + 'm' : Math.round(s) + 's';
+const color = (role) => `var(${ROLES[role] || '--c5'})`;
+let cfg = {issue_base: ''};
+const issue = (n) => cfg.issue_base ? `<a class="link" href="${esc(cfg.issue_base)}/${n}" target="_blank" rel="noopener">#${n}</a>` : '#' + n;
+const get = (path) => fetch(path).then(async (r) => { const d = await r.json(); if (!r.ok) throw new Error(d.error || r.status); return d; });
+const card = (k, v, n = '') => `<div class="card"><div class="k">${esc(k)}</div><div class="v">${v}</div><div class="n">${esc(n)}</div></div>`;
+const empty = (text) => `<div class="empty">${esc(text)}</div>`;
+const outcomeClass = (o) => ['needs-human', 'done'].includes(o) ? 'good' : ['blocked', 'limit-unknown'].includes(o) ? 'bad' : ['question', 'limit', 'interrupted'].includes(o) ? 'warn' : '';
+
+function bars(rows, height = 150) {            // stacked bars: rows = [{label, parts:[[role, value]]}]
+  const max = Math.max(...rows.map((r) => r.parts.reduce((a, p) => a + p[1], 0)), 1e-9);
+  const w = 640, bw = Math.min(46, w / rows.length - 8), plot = height - 24;
+  const cols = rows.map((r, i) => {
+    let y = plot; const x = 10 + i * (w / rows.length);
+    const rects = r.parts.map(([role, v]) => { const h = v / max * (plot - 8); y -= h; return `<rect x="${x}" y="${y}" width="${bw}" height="${h}" fill="${color(role)}"><title>${esc(role)}: ${v}</title></rect>`; }).join('');
+    return rects + `<text x="${x + bw / 2}" y="${height - 6}" text-anchor="middle">${esc(r.label.slice(5))}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${w} ${height}" role="img" aria-label="bar chart">${cols}</svg>`;
+}
+function line(points, height = 70) {            // points = [{label, value 0..1}]
+  const w = 240, step = points.length > 1 ? (w - 16) / (points.length - 1) : 0;
+  const xy = points.map((p, i) => [8 + i * step, 8 + (1 - p.value) * (height - 16)]);
+  const d = xy.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 ${w} ${height}" role="img" aria-label="pass rate by day"><path d="${d}" fill="none" stroke="var(--c1)" stroke-width="2"/>` +
+    xy.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="2.5" fill="var(--c1)"/>`).join('') + '</svg>';
+}
+const legend = (roles) => `<div class="legend">${roles.map((r) => `<span><i style="background:${color(r)}"></i>${esc(r)}</span>`).join('')}</div>`;
+
+const PAGES = {
+  async dashboard(tab) {
+    const d = await get('/api/dashboard?since=' + $('since').value), r = d.report || {};
+    const tabs = ['productivity', 'spending', 'scorers'], cur = tabs.includes(tab) ? tab : 'productivity';
+    const head = `<h1>Dashboard</h1><p class="sub">Window ${esc($('since').value)}. Numbers are derived from the local records of this workdir.</p>
+      <div class="tabs">${tabs.map((t) => `<a href="#dashboard/${t}" class="${t === cur ? 'on' : ''}">${t[0].toUpperCase() + t.slice(1)}</a>`).join('')}</div>`;
+    if (cur === 'productivity') {
+      const days = d.runs_by_day.map((x) => ({label: x.day, parts: [['implement', x.count]]}));
+      return head + `<div class="grid">${card('Handoffs to a human', r.handoffs ?? 0, 'tickets that reached needs-human')}
+        ${card('Merged', r.merged ?? 0, 'merge rate ' + pct(r.merge_rate))}${card('Autonomy', pct(r.autonomy), 'runs without a human step')}
+        ${card('Kickoff to handoff', dur(r.cycle && r.cycle.kickoff_to_handoff), 'median cycle time')}
+        ${card('Human interactions per MR', r.human_interactions_per_mr ? r.human_interactions_per_mr.mean : '-', 'mean')}</div>
+        <h2>Runs per day</h2>${days.length ? bars(days) : empty('No runs in this window.')}
+        <h2>How runs ended</h2>${table(['Outcome', 'Runs'], Object.entries(r.runs || {}).map(([k, v]) => [`<span class="pill ${outcomeClass(k)}">${esc(k)}</span>`, v]), [1])}`;
+    }
+    if (cur === 'spending') {
+      const by = r.cost_by_role || {}, roles = Object.keys(by);
+      const days = d.cost_by_day.map((x) => ({label: x.day, parts: Object.entries(x.by_role)}));
+      return head + `<div class="grid">${card('Median cost per MR', usd(r.cost_per_mr && r.cost_per_mr.median), (r.cost_per_mr && r.cost_per_mr.steps_unknown_cost || 0) + ' steps with unknown cost')}
+        ${roles.map((k) => card('Cost: ' + k, usd(by[k]), 'in this window')).join('')}</div>
+        <h2>Cost per day</h2>${days.length ? bars(days) + legend(roles) : empty('No cost recorded in this window.')}`;
+    }
+    return head + (await PAGES.scorers(true));
+  },
+  async inbox() {
+    const d = await get('/api/inbox');
+    const body = !d.available ? empty('Set KARGAH_GITLAB_URL, KARGAH_GITLAB_PROJECT and KARGAH_GITLAB_TOKEN before starting the UI to see what waits for you.')
+      : !d.rows.length ? empty('Nothing waits for you.')
+      : table(['Kind', 'Ticket', 'Waiting', 'What'], d.rows.map((x) => [`<span class="pill">${esc(x.kind)}</span>`, `<a class="link" href="${esc(x.url)}" target="_blank" rel="noopener">#${x.number} ${esc(x.title)}</a>`, dur(x.waiting_seconds), `<span class="reason">${esc(x.summary)}</span>`]));
+    return `<h1>Inbox</h1><p class="sub">Tickets that need a person, oldest first. Answer them in GitLab.</p>${body}`;
+  },
+  async runs() {
+    const rows = await get('/api/runs');
+    const used = new Set();
+    const html = rows.map((r) => {
+      const total = r.steps.reduce((a, s) => a + (s.seconds || 0), 0) || 1;
+      r.steps.forEach((s) => used.add(s.role));
+      return `<div class="run"><div class="top"><b>${issue(r.ticket)}</b><span class="pill ${outcomeClass(r.outcome)}">${esc(r.outcome)}</span>
+        <span class="grow"></span><span class="reason">${esc((r.started || '').replace('T', ' ').slice(0, 16))} UTC &middot; ${dur(r.seconds)} &middot; ${usd(r.cost_usd)} &middot; ${r.steps.length} steps</span></div>
+        <div class="bar">${r.steps.map((s) => `<span style="flex:${Math.max(s.seconds || 0, total / 60)};background:${color(s.role)}" title="${esc(s.role)} &middot; ${esc(s.harness)} ${esc(s.model)} &middot; ${dur(s.seconds)} &middot; ${esc(s.status)} &middot; ${usd(s.cost_usd)}"></span>`).join('')}</div></div>`;
+    }).join('');
+    return `<h1>Runs</h1><p class="sub">Newest first. Each bar is one agent call; hover for details.</p>${html ? html + legend([...used]) : empty('No runs yet.')}`;
+  },
+  async scorers(inner) {
+    const rows = await get('/api/scorers');
+    const body = rows.length ? `<div class="grid">${rows.map((s) => `<div class="card"><div class="k">${esc(s.scorer)}</div><div class="v">${pct(s.passed / s.count)}</div>
+      <div class="n">${s.passed} of ${s.count} passed</div>${line(s.by_day.map((x) => ({label: x.day, value: x.rate})))}</div>`).join('')}</div>` +
+      rows.map((s) => s.failures.length ? `<h2>Failures of ${esc(s.scorer)}</h2>` + table(['Step', 'Ticket', 'Label', 'Why'], s.failures.map((f) => [esc(f.step_id), issue(f.ticket), `<span class="pill warn">${esc(f.label)}</span>`, `<span class="reason">${esc(f.reason)}</span>`])) : '').join('')
+      : empty('No scores yet. Set sampling_rate above 0 in a scorer file, or run `kargah score`.');
+    return inner ? body : `<h1>Scorers</h1><p class="sub">Judge agents grade finished steps.</p>` + body;
+  },
+  async improvement() {
+    const rows = await get('/api/improvements');
+    return `<h1>Self-improvement</h1><p class="sub">Issues the factory opened about its own agents. They never carry <code>ready</code>; you decide.</p>` +
+      (rows.length ? table(['Issue', 'Agent', 'Failures behind it'], rows.map((x) => [issue(x.issue), esc(x.role), x.failures], [2])) : empty('Nothing proposed yet. Turn it on with [self_improvement] in .kargah/config.toml.'));
+  },
+  async benchmarks() {
+    const suites = await get('/api/benchmarks');
+    const html = suites.map((s) => `<h2>${esc(s.suite)} &middot; recommended: <span class="pill good">${esc(s.recommended)}</span></h2>` +
+      table(['Configuration', 'Trials', 'Correctness', 'Pass rate', 'Mean cost', 'Median time'], s.summaries.map((x) => [esc(x.configuration), x.n, pct(x.mean_correctness), pct(x.pass_rate), usd(x.mean_cost), dur(x.median_seconds)], [1, 2, 3, 4, 5]))).join('');
+    return `<h1>Benchmarks</h1><p class="sub">Configurations compared on fixed tasks.</p>` + (html || empty('No benchmark has run. Try `kargah bench run SUITE`.'));
+  },
+};
+function table(head, rows, numeric = []) {
+  return `<table><thead><tr>${head.map((h, i) => `<th class="${numeric.includes(i) ? 'num' : ''}">${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, i) => `<td class="${numeric.includes(i) ? 'num' : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+function nav(page, badges) {
+  $('side').innerHTML = '<div class="brand">Kargah</div>' + NAV.map(([group, items]) => (group ? `<div class="group">${group}</div>` : '') +
+    items.map(([id, name, off]) => off ? `<a class="off"><span>${name}</span><span class="soon">soon</span></a>`
+      : `<a href="#${id}" class="${id === page ? 'on' : ''}"><span>${name}</span>${badges[id] ? `<span class="badge">${badges[id]}</span>` : ''}</a>`).join('')).join('');
+}
+const badges = {};
+async function render() {
+  const [page, tab] = (location.hash.slice(1) || 'dashboard').split('/');
+  const known = NAV.flatMap((g) => g[1]).find((i) => i[0] === page && !i[2]);
+  const id = known ? page : 'dashboard';
+  nav(id, badges);
+  $('crumb').innerHTML = `Kargah &rsaquo; <b>${esc(known ? known[1] : 'Dashboard')}</b>`;
+  $('view').innerHTML = '<p class="sub">Loading...</p>';
+  try { $('view').innerHTML = await PAGES[id](tab); }
+  catch (e) { $('view').innerHTML = empty('Could not load this page: ' + e.message); }
+}
+async function start() {
+  try { cfg = await get('/api/config'); } catch (e) { /* the pages still work without links */ }
+  try { const i = await get('/api/inbox'); badges.inbox = i.rows.length || ''; } catch (e) { /* no tracker */ }
+  window.addEventListener('hashchange', render); $('since').addEventListener('change', render);
+  render();
+}
+start();
+</script>
+</body>
+</html>
